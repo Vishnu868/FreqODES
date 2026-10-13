@@ -1,5 +1,5 @@
-[26/10/13 08:42:49] [conf.py:  361]: PyTorch Version: torch=2.11.0+cu130, cuda=13.0, cudnn=92700
-[26/10/13 08:42:49] [conf.py:  363]: ACTIVE:
+[26/10/13 15:27:28] [conf.py:  361]: PyTorch Version: torch=2.11.0+cu130, cuda=13.0, cudnn=92700
+[26/10/13 15:27:28] [conf.py:  363]: ACTIVE:
   AP: 0.9
   Active_Round: 1
   BUDGET_PIXEL: 1.0
@@ -52,8 +52,8 @@ GTTA:
   USE_STYLE_TRANSFER: True
 LIST_NAME_SRC: clear_train.txt
 LIST_NAME_TEST: run
-LOG_DEST: CHAOS_T1_IP_OOP_261013_084249.txt
-LOG_TIME: 261013_084249
+LOG_DEST: CHAOS_T1_IP_OOP_261013_152728.txt
+LOG_TIME: 261013_152728
 MODEL:
   ADAPTATION: CHAOS
   EPISODIC: False
@@ -93,13 +93,13 @@ TEST:
   BATCH_SIZE: 1
   IMG_SIZE: 256
   N_AUGMENTATIONS: 6
-[26/10/13 08:42:49] [demo_ODES.py:   61]: Model will run on Tesla T4
-[26/10/13 08:42:49] [_builder.py:  219]: Loading pretrained weights from Hugging Face hub (timm/resnet18.a1_in1k)
-[26/10/13 08:42:50] [_client.py: 1025]: HTTP Request: HEAD https://huggingface.co/timm/resnet18.a1_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+[26/10/13 15:27:28] [demo_ODES.py:   61]: Model will run on Tesla T4
+[26/10/13 15:27:29] [_builder.py:  219]: Loading pretrained weights from Hugging Face hub (timm/resnet18.a1_in1k)
+[26/10/13 15:27:29] [_client.py: 1025]: HTTP Request: HEAD https://huggingface.co/timm/resnet18.a1_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-[26/10/13 08:42:50] [_http.py:  993]: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-[26/10/13 08:42:50] [_hub.py:  244]: [timm/resnet18.a1_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
-[26/10/13 08:42:50] [_builder.py:  284]: Missing keys (fc.weight, fc.bias) discovered while loading pretrained weights. This is expected if model is being adapted.
+[26/10/13 15:27:29] [_http.py:  993]: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[26/10/13 15:27:29] [_hub.py:  244]: [timm/resnet18.a1_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
+[26/10/13 15:27:29] [_builder.py:  284]: Missing keys (fc.weight, fc.bias) discovered while loading pretrained weights. This is expected if model is being adapted.
 python demo_ODES.py --cfg cfgs/TTA_Active_CHAOST1_IP_OOP.yaml
 python demo_ODES.py --cfg cfgs/TTA_Active_CHAOS_DUKE.yaml
 DEVICE: cuda
@@ -107,11 +107,11 @@ DEVICE: cuda
 4 4
 16 16
 4 4
-  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:19<06:12, 19.59s/it] 10%|█         | 2/20 [00:32<04:38, 15.49s/it] 15%|█▌        | 3/20 [00:45<04:08, 14.64s/it] 20%|██        | 4/20 [00:49<02:44, 10.25s/it] 25%|██▌       | 5/20 [01:04<03:02, 12.18s/it] 30%|███       | 6/20 [01:28<03:43, 15.98s/it] 35%|███▌      | 7/20 [01:31<02:34, 11.86s/it] 40%|████      | 8/20 [01:34<01:48,  9.01s/it] 45%|████▌     | 9/20 [01:38<01:20,  7.33s/it] 50%|█████     | 10/20 [01:41<00:59,  5.99s/it] 55%|█████▌    | 11/20 [01:56<01:19,  8.78s/it] 60%|██████    | 12/20 [02:00<00:58,  7.33s/it] 65%|██████▌   | 13/20 [02:03<00:43,  6.16s/it] 70%|███████   | 14/20 [02:18<00:52,  8.72s/it] 75%|███████▌  | 15/20 [02:22<00:36,  7.24s/it] 80%|████████  | 16/20 [02:26<00:25,  6.31s/it] 85%|████████▌ | 17/20 [02:45<00:30, 10.03s/it] 90%|█████████ | 18/20 [02:48<00:16,  8.04s/it] 95%|█████████▌| 19/20 [02:52<00:06,  6.86s/it]100%|██████████| 20/20 [02:55<00:00,  5.72s/it]100%|██████████| 20/20 [02:55<00:00,  8.78s/it]
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:18<05:50, 18.45s/it] 10%|█         | 2/20 [00:29<04:13, 14.09s/it] 15%|█▌        | 3/20 [00:41<03:46, 13.31s/it] 20%|██        | 4/20 [00:45<02:29,  9.32s/it] 25%|██▌       | 5/20 [00:59<02:48, 11.24s/it] 30%|███       | 6/20 [01:22<03:32, 15.19s/it] 35%|███▌      | 7/20 [01:26<02:27, 11.36s/it] 40%|████      | 8/20 [01:29<01:44,  8.69s/it] 45%|████▌     | 9/20 [01:32<01:17,  7.01s/it] 50%|█████     | 10/20 [01:35<00:57,  5.74s/it] 55%|█████▌    | 11/20 [01:49<01:14,  8.28s/it] 60%|██████    | 12/20 [01:53<00:55,  6.96s/it] 65%|██████▌   | 13/20 [01:56<00:40,  5.83s/it] 70%|███████   | 14/20 [02:10<00:49,  8.21s/it] 75%|███████▌  | 15/20 [02:13<00:34,  6.83s/it] 80%|████████  | 16/20 [02:17<00:23,  5.96s/it] 85%|████████▌ | 17/20 [02:35<00:28,  9.51s/it] 90%|█████████ | 18/20 [02:38<00:15,  7.63s/it] 95%|█████████▌| 19/20 [02:42<00:06,  6.51s/it]100%|██████████| 20/20 [02:45<00:00,  5.40s/it]100%|██████████| 20/20 [02:45<00:00,  8.27s/it]
 Adapted Model Results:
-Adapt Dice All Data liver: 0.872398853302002
-Adapt Dice All Data right kidney: 0.7333627939224243
-Adapt Dice All Data left kidney: 0.7528736591339111
-Adapt Dice All Data spleen: 0.7655698657035828
-Mean Adapt Dice All Data Score: 0.78105134
-{"prune": "FUSED", "K": 0.1, "mean_dice": 78.10513377189636, "annotated_fraction": 0.0010883973960345828, "seconds": 178.2863428592682}
+Adapt Dice All Data liver: 0.8762649297714233
+Adapt Dice All Data right kidney: 0.7417746186256409
+Adapt Dice All Data left kidney: 0.7553810477256775
+Adapt Dice All Data spleen: 0.790084958076477
+Mean Adapt Dice All Data Score: 0.7908764
+{"prune": "FUSED", "K": 0.1, "mean_dice": 79.08763885498047, "annotated_fraction": 0.0010883973960345828, "seconds": 168.09817790985107}

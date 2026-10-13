@@ -17,19 +17,25 @@ This repository does two things:
 
 ## Key results (Tesla T4, seed 1337)
 
-| Pruning score | K = 10 % Dice | K = 50 % Dice | Online pass time (K = 10) |
-|---|---|---|---|
-| Source only (no adaptation) | 64.29 | – | – |
-| ODES, all slices (K = 100) | 79.26 (paper 78.61) | – | – |
-| **BN-KL (ODES, replicated)** | **78.38** (paper 76.80) | 79.26 | 176 s |
-| FFT (FreqODES) | 77.31 | 79.34 | 116 s |
-| FFT+DWT (FreqODES) | 77.65 | 78.91 | 117 s |
-| Fused, λ = 0.5 | 78.15 | **79.35** | 178 s |
-| Random | 78.15 | 79.21 | 115 s |
+Mean Dice / Jaccard (%) on CHAOS T1-DUAL in-phase → out-of-phase, with b = 1 % of pixels annotated in each selected slice.
 
-- **Shift detector:** the frequency score separates in-phase from out-of-phase slices with ROC-AUC **0.994** (FFT). Out-of-phase images carry more high-frequency energy.
-- **K = 50 %:** FFT and fused pruning match annotating every slice, with half the expert effort.
-- **K = 10 % (negative result):** the original BN score is still best. Pure frequency scores trail by about 0.7–1.1 Dice (p < 0.05). The fused score and random pruning are not significantly different from ODES.
+| Pruning score | K = 10 % Dice | K = 10 % IoU | K = 50 % Dice | Online pass (K = 10) |
+|---|---|---|---|---|
+| Source only (no adaptation) | 54.97 (paper 52.99) | 42.74 | – | 49 s |
+| ODES, all slices (K = 100) | 79.52 (paper 78.61) | 66.96 | – | 117 s |
+| **BN-KL (ODES, replicated)** | 78.83 (paper 76.80) | 66.24 | **79.57** (paper 78.56) | 167 s |
+| FFT (FreqODES) | 78.02 | 65.03 | 79.24 | **107 s** |
+| DWT (FreqODES) | 78.15 | 65.28 | 79.09 | 109 s |
+| FFT+DWT (FreqODES) | 78.20 | 65.27 | 79.20 | 109 s |
+| Fused, λ = 0.25 | **79.09** | 66.37 | – | ~170 s |
+| Fused, λ = 0.5 | 78.40 | 65.45 | 79.50 | 169 s |
+| Random | 78.75 | 66.04 | 79.52 | 107 s |
+
+- **Replication:** adaptation lifts Dice from about 55 to 79.5, as in the paper (53 → 78.6).
+- **Shift detector:** the frequency score separates in-phase from out-of-phase slices with ROC-AUC **0.994** (FFT), with no network forward passes. That makes the online pass about **35 % faster**.
+- **Pure frequency pruning:** trails ODES by 0.6–0.8 Dice at K = 10 % and by 0.3–0.5 at K = 50 % (paired Wilcoxon, p = 0.005–0.09).
+- **Fused score:** matches ODES. λ = 0.25 gives the best K = 10 % result (79.09 vs 78.83), but the difference is not significant (p = 0.75).
+- **Takeaway:** a good *domain-shift* detector is not automatically a good *annotation-value* detector. The [report](report/main.pdf) analyses why.
 
 The full tables, ablations and analysis are in [`results/results_tables.md`](results/results_tables.md), the [slides](presentation/) and the [report](report/).
 
@@ -50,7 +56,7 @@ make_report.py          tables, LaTeX number macros, qualitative figure
 plot_curves.py          training loss and per-patient Dice curves
 colab_run.sh            one-shot pipeline for a Colab GPU (data -> PDFs)
 results/                JSON results, logs, figures, tables
-presentation/           Beamer slides (main.tex, refs.bib, figures/, main.pdf)
+presentation/           Beamer slides (main.tex, refs.bib, figures/, main.pdf = compiled slides)
 report/                 Elsevier CAS single-column report (main.tex, refs.bib, figures/, main.pdf)
 ```
 

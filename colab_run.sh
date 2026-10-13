@@ -16,6 +16,7 @@ python freq_analysis.py && mkdir -p results/figures && cp results/freq_analysis.
 SAVE_PRED=2,9,17 NAUG=20 NTHREADS=2 bash run_all.sh all
 python make_report.py results results/figures
 python plot_curves.py results results/figures
+cp results/figures/results_tables.md results/figures/results_table1.csv results/
 for d in presentation report; do mkdir -p $d/figures; cp results/figures/*.png results/figures/numbers.tex $d/figures/; done
 if [ "${BUILD_PDF:-1}" == "1" ]; then
   command -v pdflatex >/dev/null || apt-get -qq install -y texlive-latex-extra texlive-publishers texlive-science texlive-bibtex-extra > /dev/null

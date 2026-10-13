@@ -143,8 +143,8 @@
   \end{table}
   \small
   \begin{itemize}
-    \item Adapted results reproduce the paper within $\approx$1.6 DSC; the $K$ trend (100 $\approx$ 50 $>$ 10) is reproduced.
-    \item Our source-only model is stronger (no source checkpoint or training recipe is released; we trained our own), so the adaptation gain is smaller ($+15$ vs.\ $+26$).
+    \item Source-only and adapted results are within $\approx$2 DSC of the paper; the adaptation gain (\Dsourceonly$\rightarrow$\DODESK, $\approx+25$) and the $K$ trend (100 $\approx$ 50 $>$ 10) are reproduced.
+    \item No source checkpoint or training recipe is released, so we trained our own source model; organ-level differences (e.g.\ kidneys) come from that.
     \item Paper reports no Jaccard; ours is measured per volume.
   \end{itemize}
 \end{frame}
@@ -317,13 +317,13 @@ make_report.py     tables, plots, LaTeX numbers
     \end{table}
   \end{columns}
   \small
-  Adding BN information to the frequency score monotonically recovers accuracy; diversity weighting changes DSC by $<0.4$ in our runs, smaller than reported in the paper.
+  Mixing a little BN information into the frequency score ($\lambda=0.25$) gives the best $K=10$ result (\DFUSEDKTenLQuarter\ vs.\ \DBNKTen, not significant, $p=0.75$); diversity weighting changes DSC by $\le 0.2$ in our runs, much less than reported in the paper.
 \end{frame}
 
-\begin{frame}{Analysis: why FreqODES did not beat ODES at $K=10$}
+\begin{frame}{Analysis: why the pure frequency score did not beat ODES}
   \begin{itemize}\small
-    \item \textbf{Where it helps}: best shift \emph{detector} (AUC \AUCFFT), interpretable, needs no forward passes $\Rightarrow$ full online pass \TFREQKTen\,s vs.\ \TBNKTen\,s ($\approx 34\%$ faster). At $K=50$, FFT (\DFFTKFifty) and fused (\DFUSEDKFiftyLFifty) match annotating every slice (\DODESK) with half the expert effort ($p>0.6$ vs.\ ODES).
-    \item \textbf{Where it hurts}: at $K=10$ the pure frequency score differs from ODES by \DiffFREQKTen\ DSC ($p=\PFREQKTen$).
+    \item \textbf{Where it helps}: best shift \emph{detector} (AUC \AUCFFT), interpretable, needs no forward passes $\Rightarrow$ full online pass \TFREQKTen\,s vs.\ \TBNKTen\,s ($\approx 35\%$ faster). The fused score matches ODES at both budgets (\DFUSEDKFiftyLFifty\ vs.\ \DBNKFifty\ at $K=50$, $p=\PFUSEDKFiftyLFifty$) and with $\lambda=0.25$ reaches \DFUSEDKTenLQuarter\ at $K=10$.
+    \item \textbf{Where it hurts}: pure frequency scores trail ODES by 0.6--0.8 DSC at $K=10$ (FFT: \DiffFFTKTen, $p=\PFFTKTen$) and by 0.3--0.5 at $K=50$.
     \item \textbf{Mismatch between objective and score}: the most frequency-shifted slices are the volume extremes (few or tiny organs, mostly background); labelling them teaches the BN layers little. BN-KL measures what \emph{the network} finds unusual, which correlates better with segmentation error.
     \item \textbf{Small, homogeneous shift}: IP$\rightarrow$OOP shift is global, so nearly every OOP slice is ``shifted''; ranking among them is what matters, and random pruning is already strong (\DRANDOMKTen, $p=\PRANDOMKTen$).
     \item \textbf{Limitations}: single seed, 20 patients, one adaptation pair.
@@ -340,7 +340,7 @@ make_report.py     tables, plots, LaTeX numbers
     \textbf{Conclusion}
     \begin{itemize}\scriptsize
       \item ODES reproduced on CHAOS IP$\rightarrow$OOP (\DODESK\ vs.\ 78.61 DSC at $K=100$) after completing the public code.
-      \item FreqODES: an interpretable FFT/DWT shift detector (AUC \AUCFFT), $\approx34\%$ cheaper; equal accuracy at $K=50$, $-$0.7 DSC at $K=10$; the fused score narrows the gap.
+      \item FreqODES: an interpretable FFT/DWT shift detector (AUC \AUCFFT), $\approx35\%$ cheaper; alone it trails ODES by $<1$ DSC, while the fused score matches ODES (\DFUSEDKTenLQuarter\ at $K=10$, $\lambda=0.25$).
       \item Honest negative result: a good \emph{domain-shift} detector is not automatically a good \emph{annotation-value} detector.
     \end{itemize}
     \textbf{Member contributions}
