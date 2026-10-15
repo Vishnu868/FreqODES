@@ -55,7 +55,7 @@ def Pixel_Selection_Equal(model,img,label,slice_selection_info,cfg):
         primary_pred,feature,concat_feature = model(img,require_feature=True)
         
     if cfg.ACTIVE.BUDGET_SLICE<1:
-        selected_idx = Slice_Selection_Module(cfg,model,img,feature,slice_selection_info)
+        selected_idx = Slice_Selection_Module(cfg,model,img,feature,slice_selection_info,primary_pred)
     else:
         selected_idx = np.arange(img.shape[0])
 
@@ -94,12 +94,15 @@ def Pixel_Selection_Equal(model,img,label,slice_selection_info,cfg):
     return tgt_mask
 
 
-def Slice_Selection_Module(cfg,model,img,feature,slice_selection_info):
+def Slice_Selection_Module(cfg,model,img,feature,slice_selection_info,pred=None):
     """Image pruning. cfg.ACTIVE.PRUNE selects the domain-shift score:
        BN     : original ODES, KL divergence of BN statistics (Eq. 1)
        FFT/DWT/FREQ : FreqODES, frequency-domain shift score (methods/freq_shift.py)
        FUSED  : lambda * BN + (1 - lambda) * FREQ   (each normalised by its batch max)
        RANDOM : random K% (ablation row of Table 3)
+       FREQV2 : FreqODES v2 = FREQ shift x predicted organ fraction x mean prediction entropy
+       FREQAREA / FREQENT : v2 ablations (FREQ x organ fraction / FREQ x entropy)
+                (reuses the inference prediction, so still no extra forward passes)
     """
     mode = cfg.ACTIVE.PRUNE.upper()
     n_select = max(1, int(np.ceil(img.shape[0] * cfg.ACTIVE.BUDGET_SLICE)))
@@ -114,13 +117,23 @@ def Slice_Selection_Module(cfg,model,img,feature,slice_selection_info):
 
     if mode in ('BN', 'FUSED'):
         d_bn, _ = Distance_Calculation_from_Source(model,img,slice_selection_info)
-    if mode in ('FFT', 'DWT', 'FREQ', 'FUSED'):
+    if mode in ('FFT', 'DWT', 'FREQ', 'FUSED', 'FREQV2', 'FREQAREA', 'FREQENT'):
         freq_ref = slice_selection_info[2]
         stack = img[:, 0].detach().cpu().numpy()
-        d_freq = freq_ref.score_stack(stack, 'FREQ' if mode == 'FUSED' else mode)
+        d_freq = freq_ref.score_stack(stack, 'FREQ' if mode in ('FUSED', 'FREQV2', 'FREQAREA', 'FREQENT') else mode)
 
     if mode == 'BN':
         dists_from_source = _norm(d_bn)
+    elif mode in ('FREQV2', 'FREQAREA', 'FREQENT'):
+        prob = torch.softmax(pred.detach(), dim=1)
+        bg = cfg.MODEL.NUM_CLASSES - 1                      # background is the last channel
+        organ_frac = (prob.argmax(1) != bg).float().mean((1, 2)).cpu().numpy()
+        entropy = (-(prob * torch.log(prob + 1e-6)).sum(1)).mean((1, 2)).cpu().numpy()
+        dists_from_source = _norm(d_freq)
+        if mode in ('FREQV2', 'FREQAREA'):
+            dists_from_source = dists_from_source * _norm(organ_frac)
+        if mode in ('FREQV2', 'FREQENT'):
+            dists_from_source = dists_from_source * _norm(entropy)
     elif mode == 'FUSED':
         lam = cfg.ACTIVE.FUSE_LAMBDA
         dists_from_source = lam * _norm(d_bn) + (1 - lam) * _norm(d_freq)
@@ -144,7 +157,7 @@ def Region_Selection_Equal(model,img,label,slice_selection_info,cfg):
         primary_pred,feature,concat_feature = model(img,require_feature=True)
 
     if cfg.ACTIVE.BUDGET_SLICE<1:
-        selected_idx = Slice_Selection_Module(cfg,model,img,feature,slice_selection_info)
+        selected_idx = Slice_Selection_Module(cfg,model,img,feature,slice_selection_info,primary_pred)
     else:
         selected_idx = np.arange(img.shape[0])
 

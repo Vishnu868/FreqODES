@@ -5,7 +5,7 @@
 set -e
 ROOT=$(pwd)
 mkdir -p ../data_raw results/logs && cd ../data_raw
-[ -d Train_Sets ] || { wget -q --show-progress -O chaos.zip "https://zenodo.org/api/records/3431873/files/CHAOS_Train_Sets.zip/content"; unzip -q chaos.zip "Train_Sets/MR/*"; }
+[ -d Train_Sets ] || { wget -q -O chaos.zip "https://zenodo.org/api/records/3431873/files/CHAOS_Train_Sets.zip/content"; unzip -q chaos.zip "Train_Sets/MR/*"; }
 cd "$ROOT"
 [ -d ../data/CHAOS ] || python prepare_chaos.py --chaos ../data_raw/Train_Sets/MR --out ../data/CHAOS
 CK=checkpoint/CHAOS_T1_IP_OOP/CHAOS_T1_INPHASE.pt

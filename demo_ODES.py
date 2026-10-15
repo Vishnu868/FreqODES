@@ -185,7 +185,7 @@ torch.set_num_threads(int(os.environ.get('NTHREADS', os.cpu_count())))
 
 
 pre_mean, pre_var = get_feature_stat_auto(base_model)
-freq_ref = build_freq_reference() if cfg.ACTIVE.PRUNE.upper() in ('FFT', 'DWT', 'FREQ', 'FUSED') else None
+freq_ref = build_freq_reference() if cfg.ACTIVE.PRUNE.upper() in ('FFT', 'DWT', 'FREQ', 'FUSED', 'FREQV2', 'FREQAREA', 'FREQENT') else None
 if cfg.MODEL.Inference_Only:
     base_model.eval()
 else:
