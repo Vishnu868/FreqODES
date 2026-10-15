@@ -5,6 +5,8 @@
 set -e
 ROOT=$(pwd)
 mkdir -p ../data_raw results/logs && cd ../data_raw
+# fast path: an uploaded /content/chaos_t1dual.zip (MR T1-DUAL only, 65 MB) instead of the 890 MB Zenodo download
+[ -d Train_Sets ] || [ ! -f /content/chaos_t1dual.zip ] || unzip -q /content/chaos_t1dual.zip
 [ -d Train_Sets ] || { wget -q -O chaos.zip "https://zenodo.org/api/records/3431873/files/CHAOS_Train_Sets.zip/content"; unzip -q chaos.zip "Train_Sets/MR/*"; }
 cd "$ROOT"
 [ -d ../data/CHAOS ] || python prepare_chaos.py --chaos ../data_raw/Train_Sets/MR --out ../data/CHAOS
