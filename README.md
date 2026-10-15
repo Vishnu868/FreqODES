@@ -72,7 +72,7 @@ cfgs/CHAOS_T1_IP_OOP.yaml  experiment configuration
 run_all.sh              19-run single-seed sweep (v1)
 run_v2.sh               33-run 3-seed sweep (v2 / FreqODES-U)
 analyze_v2.py           3-seed statistics, v2 figure and LaTeX numbers
-make_results_html.py    interactive results page
+make_results_html.py    interactive results page -> FreqODES_results.html (open in a browser)
 freq_analysis.py        IP vs OOP spectra, separability AUC, synthetic-shift check
 make_report.py          tables, LaTeX number macros, qualitative figure
 plot_curves.py          training loss and per-patient Dice curves

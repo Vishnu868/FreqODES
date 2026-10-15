@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreqODES Viva Prep</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --text:#1d1d1f; --muted:#5f6368; --accent:#b3261e;
+  --border:#e2e2de; --chip:#f1ece9; --good:#1e7a3c; --hl:#fff4c2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141416; --card:#1d1d20; --text:#ececec; --muted:#a3a3a8; --accent:#ff8a80;
+    --border:#2e2e33; --chip:#2a2326; --good:#7fd69b; --hl:#4a4020;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141416; --card:#1d1d20; --text:#ececec; --muted:#a3a3a8; --accent:#ff8a80;
+  --border:#2e2e33; --chip:#2a2326; --good:#7fd69b; --hl:#4a4020;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.7rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg);padding:10px 0;z-index:2;border-bottom:1px solid var(--border)}
+.bar input{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:15px}
+.bar button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;font-size:14px}
+.summary{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin:18px 0}
+.summary b{color:var(--accent)}
+h2{font-size:1.15rem;margin:28px 0 10px;color:var(--accent)}
+details{background:var(--card);border:1px solid var(--border);border-radius:10px;margin:8px 0;padding:0 14px}
+summary{cursor:pointer;padding:12px 0;font-weight:600;list-style:none;display:flex;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary .n{color:var(--muted);font-weight:500;min-width:2.2em}
+details[open] summary{border-bottom:1px solid var(--border)}
+.a{padding:10px 0 14px}
+.a p{margin:6px 0}
+.tip{font-size:.9rem;color:var(--muted);border-top:1px dashed var(--border);margin-top:8px;padding-top:6px}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:8px 0}
+th,td{border:1px solid var(--border);padding:6px 8px;text-align:left}
+th{background:var(--chip)}
+.tblwrap{overflow-x:auto}
+code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:.9em}
+mark{background:var(--hl);color:inherit}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>FreqODES: Viva Questions &amp; Answers</h1>
+<p class="sub">22AIE437 Medical Image Processing · Replication of ODES (MICCAI 2025) + frequency-domain image pruning · CHAOS T1-DUAL in-phase → out-of-phase</p>
+
+<div class="bar">
+  <input id="q" type="search" placeholder="Search questions and answers…" aria-label="Search">
+  <button id="open">Expand all</button>
+  <button id="close">Collapse all</button>
+  <button id="theme" title="Toggle theme">◐ Theme</button>
+</div>
+
+<div class="summary">
+  <b>30-second pitch:</b> ODES adapts a segmentation model to a new MRI domain one patient at a time, asking an expert to label only 1% of pixels on a few selected slices. It picks those slices by comparing batch-norm statistics inside the network, which needs 20 forward passes per slice. <b>Our novelty (FreqODES)</b> picks the slices from the image's <b>frequency content</b> (FFT ring energies + Haar wavelet sub-band energies) instead. It detects the shift almost perfectly (AUC 0.994) and is about 35% faster. Alone it trails ODES by less than 1 Dice point; <b>fused</b> with the original score it matches ODES (79.09 vs 78.83, not significant). The lesson: a good shift detector is not automatically a good annotation selector.
+</div>
+
+<!-- ========== 1. PROBLEM ========== -->
+<h2>1. Problem &amp; motivation</h2>
+
+<details><summary><span class="n">Q1</span>What problem does your project solve?</summary><div class="a">
+<p>Segmentation models trained on one MRI scanner or sequence (source) perform worse on another (target) because the image appearance changes. This is <b>domain shift</b>. We adapt the model to the target domain <b>online</b>, patient by patient, using a very small amount of expert labelling.</p>
+</div></details>
+
+<details><summary><span class="n">Q2</span>Why is domain shift important clinically?</summary><div class="a">
+<p>Hospitals use different scanners, protocols and sequences. A model that works in one hospital can silently fail in another, giving wrong organ boundaries for surgery planning or volume measurement. In our data, the model drops from ~79% Dice (after adaptation) to <b>55%</b> without adaptation, and kidney Dice falls to about 30%.</p>
+</div></details>
+
+<details><summary><span class="n">Q3</span>Why not just retrain the model on the new data?</summary><div class="a">
+<p>Retraining needs fully labelled target data. Expert labelling of 3-D MRI is slow and expensive. ODES needs labels for only <b>1% of pixels</b> on a subset of slices, and it updates only batch-norm layers, so adaptation is quick and cheap.</p>
+</div></details>
+
+<details><summary><span class="n">Q4</span>Why not use fully unsupervised test-time adaptation like TENT?</summary><div class="a">
+<p>Unsupervised methods rely on the model's own pseudo-labels, which can be wrong under shift and are risky in clinical use. In the paper, TENT reaches 67.3 Dice on CHAOS IP→OOP, while ODES with 1% expert labels reaches 78.6.</p>
+</div></details>
+
+<!-- ========== 2. DATASET ========== -->
+<h2>2. Dataset &amp; setup</h2>
+
+<details><summary><span class="n">Q5</span>Which dataset did you use?</summary><div class="a">
+<p><b>CHAOS</b> (Combined Healthy Abdominal Organ Segmentation) challenge, MR T1-DUAL sequence: 20 patients, 647 axial slices (26–50 per patient), resized to 256×256. Labels: liver, right kidney, left kidney, spleen + background (5 classes).</p>
+</div></details>
+
+<details><summary><span class="n">Q6</span>What are in-phase and out-of-phase images? Why is that a domain shift?</summary><div class="a">
+<p>T1-DUAL is a gradient-echo sequence acquired at two echo times. In <b>in-phase (IP)</b> images, fat and water signals add up. In <b>out-of-phase (OOP)</b> images, they cancel at fat–water boundaries, producing dark "India-ink" edges and different texture. The anatomy is identical but the appearance differs, which makes it a clean domain-shift benchmark.</p>
+</div></details>
+
+<details><summary><span class="n">Q7</span>What is your train / test split?</summary><div class="a">
+<p>Following the paper: the source model is trained on <b>in-phase</b> volumes. The 20 <b>out-of-phase</b> volumes arrive as an online stream, one patient = one batch, processed once. Each patient is evaluated right after its own adaptation step. There is no separate target training set, because the setting is online.</p>
+<p class="tip">If asked about leakage: the same patients appear in source and target, as in the paper's protocol. This tests appearance shift, not patient generalisation.</p>
+</div></details>
+
+<details><summary><span class="n">Q8</span>Which metrics did you use?</summary><div class="a">
+<p><b>Dice</b> (2|A∩B| / (|A|+|B|)) and <b>Jaccard / IoU</b> (|A∩B| / |A∪B|) per organ and averaged, adaptation time, and a <b>paired Wilcoxon signed-rank test</b> over the 20 patients to check whether differences are significant.</p>
+</div></details>
+
+<!-- ========== 3. BASE PAPER ========== -->
+<h2>3. Base paper (ODES)</h2>
+
+<details><summary><span class="n">Q9</span>What is the base paper?</summary><div class="a">
+<p>"ODES: Online Domain Adaptation with Expert Guidance for Medical Image Segmentation", Islam et al., University of California Riverside, <b>MICCAI 2025</b>. Code: github.com/ShazidAraf/ODES.</p>
+</div></details>
+
+<details><summary><span class="n">Q10</span>Explain the ODES pipeline step by step.</summary><div class="a">
+<p>For each incoming patient:</p>
+<p>1. <b>Infer:</b> the source-trained DeepLabv3 predicts every slice.<br>
+2. <b>Image pruning:</b> keep the top-K% slices with the largest domain shift.<br>
+3. <b>Acquisition:</b> on those slices, choose 5×5 patches covering b = 1% of pixels, where the model is most uncertain.<br>
+4. <b>Expert labels</b> those patches.<br>
+5. <b>Update</b> only the batch-norm γ and β with cross-entropy on the labelled pixels, then move on to the next patient.</p>
+</div></details>
+
+<details><summary><span class="n">Q11</span>What is the model architecture?</summary><div class="a">
+<p><b>DeepLabv3</b> with a <b>ResNet-18</b> encoder (ImageNet-initialised, via timm), an <b>ASPP</b> module (atrous spatial pyramid pooling, multi-scale context), a low-level skip connection from an early layer, and a 5-class head. Output is upsampled to 256×256.</p>
+</div></details>
+
+<details><summary><span class="n">Q12</span>How does ODES measure domain shift (its image-pruning score)?</summary><div class="a">
+<p>Each slice is augmented 20 times (flips, rotations) and passed through a copy of the network. The batch-norm layers record the mean and variance of the activations. Treating each channel as a Gaussian, ODES computes the <b>KL divergence</b> between the source running statistics and these new statistics (last 9 BN layers). A higher KL means a bigger shift.</p>
+</div></details>
+
+<details><summary><span class="n">Q13</span>What is the acquisition function?</summary><div class="a">
+<p>A = U ⊙ P ⊙ W, where <b>U</b> is patch-mean entropy (uncertainty), <b>P</b> is regional impurity (how many classes are mixed in the window), and <b>W</b> is a diversity map built with farthest-first traversal, so selected patches are spread out spatially and in feature space. Patches are taken greedily at the maxima of A.</p>
+</div></details>
+
+<details><summary><span class="n">Q14</span>Why update only batch-norm layers?</summary><div class="a">
+<p>BN layers hold the feature statistics that change most under domain shift. Updating only γ and β is a tiny number of parameters, so it is fast, stable with very few labels, and avoids catastrophic forgetting.</p>
+</div></details>
+
+<!-- ========== 4. REPLICATION ========== -->
+<h2>4. Replication</h2>
+
+<details><summary><span class="n">Q15</span>Did you reproduce the paper's results?</summary><div class="a">
+<div class="tblwrap"><table>
+<tr><th>Setting</th><th>Paper Dice</th><th>Ours Dice</th><th>Ours IoU</th></tr>
+<tr><td>Source only</td><td>52.99</td><td>54.97</td><td>42.74</td></tr>
+<tr><td>ODES, K = 100%</td><td>78.61</td><td>79.52</td><td>66.96</td></tr>
+<tr><td>ODES, K = 50%</td><td>78.56</td><td>79.57</td><td>67.00</td></tr>
+<tr><td>ODES, K = 10%</td><td>76.80</td><td>78.83</td><td>66.24</td></tr>
+</table></div>
+<p>Yes, within about 2 Dice points, and the ~25-point gain from adaptation is reproduced.</p>
+</div></details>
+
+<details><summary><span class="n">Q16</span>Why are your numbers slightly different from the paper?</summary><div class="a">
+<p>The paper releases no source checkpoint and no training recipe, so we trained our own source model. Kidney scores differ most for this reason. GPU randomness also causes small run-to-run differences (we saw about ±0.5 Dice between two runs).</p>
+</div></details>
+
+<details><summary><span class="n">Q17</span>What did you have to fix or add in the public code?</summary><div class="a">
+<p>1. A CHAOS preprocessing script (DICOM/PNG → stacks), with a check that slices align with their labels.<br>
+2. A source-training script (missing upstream).<br>
+3. <code>FFT_weight_2.py</code>: imported by the code but never released. We re-implemented it from the paper's Algorithm 2.<br>
+4. Turned on the diversity weighting, which was computed but commented out.<br>
+5. Fixed a bug where the previous slice's acquisition map could be used.<br>
+6. Made it run on CPU/GPU (CUDA was hard-coded), and added Jaccard and JSON outputs.</p>
+</div></details>
+
+<details><summary><span class="n">Q18</span>What were your training settings?</summary><div class="a">
+<p>PyTorch; Adam, lr 1e-3, weight decay 1e-4, cosine schedule; batch size 8; 25 epochs; loss = cross-entropy + Dice; augmentation = flips, 90° rotations, intensity jitter. Adaptation: Adam, lr 1e-2, one step per patient, BN only. Hardware: NVIDIA Tesla T4 (Google Colab). Seed 1337. Training loss went from 1.07 to 0.16.</p>
+</div></details>
+
+<!-- ========== 5. NOVELTY ========== -->
+<h2>5. Novelty: FreqODES</h2>
+
+<details open><summary><span class="n">Q19</span>What exactly is your novelty?</summary><div class="a">
+<p>We replaced ODES's <b>network-based</b> slice-selection score with a <b>frequency-domain</b> score computed directly from the image:</p>
+<p><b>FFT descriptor:</b> energy in 16 concentric frequency rings of the 2-D Fourier spectrum (low → high frequency).<br>
+<b>DWT descriptor:</b> energy of LL, LH, HL, HH sub-bands of a 3-level Haar wavelet transform.<br>
+We compare each slice's descriptor with the average of 200 source slices (z-score distance). The slices with the largest distance are sent to the expert.<br>
+<b>Fused version:</b> D = λ·BN-score + (1−λ)·frequency-score.</p>
+<p>Everything else in ODES is unchanged, so any difference comes only from the selection score.</p>
+</div></details>
+
+<details><summary><span class="n">Q20</span>Why did you expect frequency features to work?</summary><div class="a">
+<p>Scanner and sequence changes alter <b>texture, noise and edge content</b>, which show up directly as changes in spatial-frequency energy. OOP images have chemical-shift artefacts at fat–water boundaries, which add high-frequency energy. Our analysis confirms this: OOP slices have clearly more high-frequency energy in every band.</p>
+</div></details>
+
+<details><summary><span class="n">Q21</span>Write the formula for your shift score.</summary><div class="a">
+<p>D<sub>freq</sub>(x) = (1/d) Σ<sub>f</sub> ((φ<sub>f</sub>(x) − μ<sub>f</sub>) / σ<sub>f</sub>)²</p>
+<p>φ<sub>f</sub> is the f-th descriptor value (log relative energy of a band or sub-band), and μ<sub>f</sub>, σ<sub>f</sub> are the mean and standard deviation over 200 source slices. It is a diagonal Mahalanobis distance.</p>
+</div></details>
+
+<details><summary><span class="n">Q22</span>Why use log relative energy, not raw energy?</summary><div class="a">
+<p>Relative energy (each band divided by the total) removes overall brightness and contrast differences, so the score measures the <b>shape of the spectrum</b>, not intensity. Log scale makes the small high-frequency bands comparable to the large low-frequency band.</p>
+</div></details>
+
+<details><summary><span class="n">Q23</span>Why both FFT and wavelets?</summary><div class="a">
+<p>FFT gives global frequency content but no location. Wavelets are localised in both space and frequency, and separate horizontal, vertical and diagonal detail. Using both gives complementary views. Both are Unit 2 topics in the MIP syllabus (domain transformation).</p>
+</div></details>
+
+<details><summary><span class="n">Q24</span>How do you know the frequency score actually detects the shift?</summary><div class="a">
+<p>We used the score alone to separate held-out in-phase slices from out-of-phase slices: <b>ROC-AUC 0.994 (FFT)</b>, 0.969 (DWT), 0.993 (both). Its mean score is 2.6 for IP vs 21.3 for OOP. It also rises steadily when we add synthetic noise or blur to source images.</p>
+</div></details>
+
+<!-- ========== 6. RESULTS ========== -->
+<h2>6. Results &amp; comparison</h2>
+
+<details><summary><span class="n">Q25</span>Show the main comparison.</summary><div class="a">
+<div class="tblwrap"><table>
+<tr><th>Selection score</th><th>K = 10% Dice</th><th>IoU</th><th>K = 50% Dice</th><th>Time (K = 10)</th></tr>
+<tr><td>BN-KL (ODES)</td><td>78.83</td><td>66.24</td><td>79.57</td><td>167 s</td></tr>
+<tr><td>FFT</td><td>78.02</td><td>65.03</td><td>79.24</td><td>107 s</td></tr>
+<tr><td>DWT</td><td>78.15</td><td>65.28</td><td>79.09</td><td>109 s</td></tr>
+<tr><td>FFT + DWT</td><td>78.20</td><td>65.27</td><td>79.20</td><td>109 s</td></tr>
+<tr><td>Fused, λ = 0.25</td><td><b>79.09</b></td><td>66.37</td><td>–</td><td>~170 s</td></tr>
+<tr><td>Fused, λ = 0.5</td><td>78.40</td><td>65.45</td><td>79.50</td><td>169 s</td></tr>
+<tr><td>Random</td><td>78.75</td><td>66.04</td><td>79.52</td><td>107 s</td></tr>
+</table></div>
+</div></details>
+
+<details><summary><span class="n">Q26</span>So did your modification improve the results?</summary><div class="a">
+<p><b>Not in accuracy.</b> Alone, the frequency score is 0.6–0.8 Dice lower than ODES at K = 10% (significant for FFT, p = 0.005). Fused with λ = 0.25 it is slightly higher (79.09 vs 78.83), but <b>not significant</b> (p = 0.75), so we say it matches ODES.</p>
+<p><b>Yes in speed and interpretability:</b> about 35% faster (no forward passes for selection), and every choice can be explained with a spectrum plot.</p>
+<p class="tip">Say this confidently. The guidelines give full credit for an honest, well-reasoned negative result.</p>
+</div></details>
+
+<details><summary><span class="n">Q27</span>Why did the frequency score not beat ODES?</summary><div class="a">
+<p>1. <b>Objective mismatch:</b> it measures "how different is this slice?", not "which labels help the model most?". The most frequency-shifted slices are often at the top and bottom of the volume, with tiny or no organs, so labelling them teaches little. The BN score reflects what the <i>network</i> finds unusual, which links more closely to its errors.<br>
+2. <b>Global shift:</b> IP→OOP affects every slice, so almost all slices look "shifted". This is also why random selection is competitive.<br>
+3. <b>Saturation:</b> all methods land between 78 and 80 Dice, close to labelling every slice, so the selection criterion has little room to matter.<br>
+4. <b>Small effects:</b> differences under 1 point, from one seed and 20 patients.</p>
+</div></details>
+
+<details><summary><span class="n">Q28</span>Random selection does almost as well. Doesn't that make the pruning step pointless?</summary><div class="a">
+<p>On this pair, yes, the pruning step adds little: random (78.75) vs ODES (78.83), p = 0.33. This differs from the paper's Table 3. Because the IP→OOP shift is uniform across slices, there is little to rank. Pruning should matter more where shift varies between slices or patients, e.g. CHAOS → DUKE (different scanners), which is our suggested future work.</p>
+</div></details>
+
+<details><summary><span class="n">Q29</span>What did the ablation studies show?</summary><div class="a">
+<p><b>Diversity weighting on vs off</b> (K = 10%): BN 78.73 → 78.83, FFT+DWT 78.32 → 78.20, random 78.96 → 78.75. Changes are ≤ 0.2 points, much smaller than the paper reports.<br>
+<b>Fusion weight λ</b>: 0 → 78.20, 0.25 → 79.09, 0.5 → 78.40, 0.75 → 78.93, 1 (pure ODES) → 78.83. Adding any BN information brings accuracy back to the ODES level.</p>
+</div></details>
+
+<details><summary><span class="n">Q30</span>Why use the Wilcoxon test?</summary><div class="a">
+<p>Each method is evaluated on the same 20 patients, so results are <b>paired</b>. Wilcoxon signed-rank is a non-parametric paired test, so it doesn't assume per-patient differences are normally distributed, which suits only 20 samples.</p>
+</div></details>
+
+<details><summary><span class="n">Q31</span>Is the comparison fair?</summary><div class="a">
+<p>Yes. Same data, same source model, same seed (1337), same patient order, same budgets (b = 1%, same K) and same acquisition and update steps. Only the slice-selection score changes.</p>
+</div></details>
+
+<!-- ========== 7. IMPLEMENTATION ========== -->
+<h2>7. Implementation</h2>
+
+<details><summary><span class="n">Q32</span>Walk me through the code structure.</summary><div class="a">
+<p><code>prepare_chaos.py</code> converts the data · <code>train_source.py</code> trains the source model · <code>demo_ODES.py</code> runs the online loop and evaluation · <code>methods/ODES.py</code> holds pruning, acquisition and the BN update · <code>methods/freq_shift.py</code> is <b>our FFT/DWT score</b> · <code>run_all.sh</code> runs all 19 experiments · <code>make_report.py</code> builds tables, figures and the LaTeX numbers · <code>colab_run.sh</code> runs the whole pipeline end to end.</p>
+</div></details>
+
+<details><summary><span class="n">Q33</span>How do you switch between ODES and FreqODES?</summary><div class="a">
+<p>One config option: <code>ACTIVE.PRUNE</code> = <code>BN</code> (ODES), <code>FFT</code>, <code>DWT</code>, <code>FREQ</code> (FFT+DWT), <code>FUSED</code> (with <code>ACTIVE.FUSE_LAMBDA</code>) or <code>RANDOM</code>. Example:<br><code>python demo_ODES.py --cfg cfgs/CHAOS_T1_IP_OOP.yaml ACTIVE.PRUNE FREQ ACTIVE.BUDGET_SLICE 0.1</code></p>
+</div></details>
+
+<details><summary><span class="n">Q34</span>How long does it take to run?</summary><div class="a">
+<p>On a T4: source training about 10–15 min; each online pass over 20 patients 107–173 s; the full 19-run sweep about 45–60 min. Downloading CHAOS from Zenodo was the slowest part.</p>
+</div></details>
+
+<details><summary><span class="n">Q35</span>How do you make sure the numbers in the slides and report are correct?</summary><div class="a">
+<p><code>make_report.py</code> reads the result JSON files and writes every number into <code>numbers.tex</code> as LaTeX macros. The slides and report use these macros, so no number is typed by hand.</p>
+</div></details>
+
+<!-- ========== 8. FUTURE ========== -->
+<h2>8. Limitations &amp; future work</h2>
+
+<details><summary><span class="n">Q36</span>What are the limitations?</summary><div class="a">
+<p>One seed, 20 patients, one adaptation pair (IP→OOP). Our source model is not identical to the paper's. Expert labels are simulated from ground truth. Differences between methods are under 1 Dice point.</p>
+</div></details>
+
+<details><summary><span class="n">Q37</span>What would you try next?</summary><div class="a">
+<p>1. Weight the frequency score by predicted organ area or uncertainty, so empty end-slices are not picked.<br>
+2. Compute spectra only inside the organ region.<br>
+3. Test CHAOS → DUKE and BMC → RUNMC, where shift is larger and varies more.<br>
+4. Several seeds and patient orders.<br>
+5. Learn λ automatically.</p>
+</div></details>
+
+<details><summary><span class="n">Q38</span>What is the main takeaway of your project?</summary><div class="a">
+<p>We reproduced ODES and showed that an image-based FFT/wavelet score detects MRI domain shift almost perfectly and much faster. But detecting shift is not the same as choosing the most useful slices to label. The best accuracy comes from combining image-level frequency cues with model-level information.</p>
+</div></details>
+
+<!-- ========== 9. BASICS ========== -->
+<h2>9. Concept basics (quick recall)</h2>
+
+<details><summary><span class="n">Q39</span>What is the 2-D Fourier transform of an image?</summary><div class="a">
+<p>It represents the image as a sum of sinusoidal patterns of different frequencies and orientations. The centre of the shifted spectrum is low frequency (smooth regions); the outer parts are high frequency (edges, fine texture, noise).</p>
+</div></details>
+
+<details><summary><span class="n">Q40</span>What is a Haar wavelet transform?</summary><div class="a">
+<p>It repeatedly splits an image into a low-pass approximation (LL) and three detail sub-bands: LH (horizontal edges), HL (vertical edges) and HH (diagonal detail). Each level halves the resolution. Unlike the FFT, it keeps spatial location.</p>
+</div></details>
+
+<details><summary><span class="n">Q41</span>What is batch normalisation?</summary><div class="a">
+<p>It normalises each channel's activations using a mean and variance (running averages at test time), then scales and shifts them with learned γ and β. Under domain shift the stored source statistics no longer match the target, which is why ODES adapts BN layers.</p>
+</div></details>
+
+<details><summary><span class="n">Q42</span>What is active learning?</summary><div class="a">
+<p>The model chooses which samples (here, pixels or patches) an expert should label, to get the most improvement from the fewest labels, usually based on uncertainty and diversity.</p>
+</div></details>
+
+<details><summary><span class="n">Q43</span>Dice vs Jaccard: what is the difference?</summary><div class="a">
+<p>Dice = 2|A∩B| / (|A|+|B|); Jaccard = |A∩B| / |A∪B|. They are monotonically related: J = D / (2 − D). Jaccard is always lower and penalises errors more.</p>
+</div></details>
+
+<p class="sub" style="margin-top:28px">Repo: github.com/Vishnu868/FreqODES · Fill in the group names in the slides and report before the viva.</p>
+</div>
+
+<script>
+const q=document.getElementById('q'), items=[...document.querySelectorAll('details')];
+q.addEventListener('input',()=>{
+  const t=q.value.trim().toLowerCase();
+  items.forEach(d=>{
+    const hit=!t||d.textContent.toLowerCase().includes(t);
+    d.classList.toggle('hidden',!hit);
+    if(t&&hit) d.open=true;
+  });
+  document.querySelectorAll('h2').forEach(h=>{
+    let n=h.nextElementSibling, any=false;
+    while(n&&n.tagName!=='H2'){ if(n.tagName==='DETAILS'&&!n.classList.contains('hidden')) any=true; n=n.nextElementSibling; }
+    h.classList.toggle('hidden',!any);
+  });
+});
+document.getElementById('open').onclick=()=>items.forEach(d=>d.open=true);
+document.getElementById('close').onclick=()=>items.forEach(d=>d.open=false);
+document.getElementById('theme').onclick=()=>{
+  const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+};
+</script>
+</body>
+</html>
