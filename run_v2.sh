@@ -7,7 +7,7 @@ run() { name=$1; shift
   [ -f results/json/${name}_run_0.json ] && { echo "skip $name"; return; }
   echo "=== $name"; python demo_ODES.py --cfg $CFG ACTIVE.N_AUG_PRUNE 20 EXP_NAME $name "$@" > results/logs/$name.log 2>&1
   tail -1 results/logs/$name.log; }
-for S in 12345 1 2; do
+for S in ${SEEDS:-12345 1 2}; do
   for K in 0.1 0.5; do
     for P in BN FREQ FREQV2 RANDOM; do run V2_${P}_K${K}_s${S} ACTIVE.PRUNE $P ACTIVE.BUDGET_SLICE $K RNG_SEED $S; done
   done
