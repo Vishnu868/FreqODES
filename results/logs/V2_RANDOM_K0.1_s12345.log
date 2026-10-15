@@ -1,0 +1,115 @@
+[26/10/15 06:03:29] [conf.py:  361]: PyTorch Version: torch=2.11.0+cu130, cuda=13.0, cudnn=92700
+[26/10/15 06:03:29] [conf.py:  363]: ACTIVE:
+  AP: 0.9
+  Active_Round: 1
+  BUDGET_PIXEL: 1.0
+  BUDGET_REGION: 1.0
+  BUDGET_SLICE: 0.1
+  DELTA: 0.2
+  DIV_WEIGHT: 1
+  Equal_annotation: 1
+  FEATURE_DIVERSE_PRUNE: 1
+  FUSE_LAMBDA: 0.5
+  LAMBDA_CONT: 0.0
+  MODE: RA
+  M_TEACHER: 0.999
+  NBR_RAD_PIXEL: 40
+  NBR_RAD_SLICE: 2
+  N_AUG_PRUNE: 20
+  PRUNE: RANDOM
+  RADIUS_K: 2
+  RST: 0.3
+  d_margin: 0.4
+  e_margin: 1.2
+  n_augmentations: 32
+BN:
+  ALPHA: 0.1
+CKPT_DIR: ./ckpt
+CKPT_PATH_ADAIN_DEC: ./ckpt/clear/ckpt_adain.pth
+CKPT_PATH_SEG: checkpoint/chaos_unet2d_2ch_v2.pt
+COTTA:
+  AP: 0.9
+  RST: 0.01
+CUDNN:
+  BENCHMARK: True
+DATASET:
+  FREQ_REF_SLICES: 200
+  PRETRAINED_PATH: checkpoint/CHAOS_T1_IP_OOP/CHAOS_T1_INPHASE.pt
+  SOURCE_NAME: CHAOS T1DUAL IN PHASE
+  SOURCE_PATH: ../data/CHAOS/T1DUAL_InPhase
+  SPLIT: only_test_all
+  TARGET_LABEL: 1
+  TARGET_NAME: CHAOS T1DUAL Out PHASE
+  TARGET_PATH: ../data/CHAOS/T1DUAL_OutPhase
+DATA_DIR: ./data
+DESC: 
+DETERMINISM: False
+EXP_NAME: V2_RANDOM_K0.1_s12345_run_0
+GTTA:
+  LAMBDA_CE_TRG: 0.1
+  PRETRAIN_STEPS_ADAIN: 20000
+  STEPS_ADAIN: 1
+  USE_STYLE_TRANSFER: True
+LIST_NAME_SRC: clear_train.txt
+LIST_NAME_TEST: run
+LOG_DEST: CHAOS_T1_IP_OOP_261015_060329.txt
+LOG_TIME: 261015_060329
+MODEL:
+  ADAPTATION: CHAOS
+  EPISODIC: False
+  IMAGENET_INIT: True
+  Inference_Only: False
+  NAME: Deeplab_v3
+  NUM_CLASSES: 5
+M_TEACHER:
+  MOMENTUM: 0.999
+OPTIM:
+  IGNORE_LABEL: 255
+  LR: 0.01
+  METHOD: ADAM
+  MOMENTUM: 0.9
+  NESTEROV: False
+  SCALE_LR_SEGHEAD: 10
+  STEPS: 1
+  WD: 0.0005
+  WORKERS: 4
+RNG_SEED: 12345
+SAVE_DIR: ./output/V2_RANDOM_K0.1_s12345_run_0
+SAVE_PREDICTIONS: False
+SOURCE:
+  BASE_SIZE: 256
+  BATCH_SIZE: 2
+  CROP_SIZE: [256, 256]
+  JITTER_VAL: 0.25
+  MAX_SCALE: 2.0
+  MIN_SCALE: 0.75
+  PERCENTAGE: 1.0
+  PROB_BLUR: 0.5
+  PROB_FLIP: 0.5
+  PROB_JITTER: 0.8
+  RANDOM_CROP: False
+  RANDOM_SCALE_CROP: True
+TEST:
+  BATCH_SIZE: 1
+  IMG_SIZE: 256
+  N_AUGMENTATIONS: 6
+[26/10/15 06:03:29] [demo_ODES.py:   61]: Model will run on Tesla T4
+[26/10/15 06:03:29] [_builder.py:  219]: Loading pretrained weights from Hugging Face hub (timm/resnet18.a1_in1k)
+[26/10/15 06:03:29] [_client.py: 1025]: HTTP Request: HEAD https://huggingface.co/timm/resnet18.a1_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[26/10/15 06:03:29] [_http.py:  993]: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[26/10/15 06:03:29] [_hub.py:  244]: [timm/resnet18.a1_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
+[26/10/15 06:03:29] [_builder.py:  284]: Missing keys (fc.weight, fc.bias) discovered while loading pretrained weights. This is expected if model is being adapted.
+python demo_ODES.py --cfg cfgs/TTA_Active_CHAOST1_IP_OOP.yaml
+python demo_ODES.py --cfg cfgs/TTA_Active_CHAOS_DUKE.yaml
+DEVICE: cuda
+16 16
+4 4
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:11<03:47, 11.97s/it] 10%|█         | 2/20 [00:20<02:59,  9.95s/it] 15%|█▌        | 3/20 [00:29<02:42,  9.58s/it] 20%|██        | 4/20 [00:30<01:36,  6.01s/it] 25%|██▌       | 5/20 [00:40<01:56,  7.73s/it] 30%|███       | 6/20 [00:57<02:31, 10.83s/it] 35%|███▌      | 7/20 [00:58<01:37,  7.49s/it] 40%|████      | 8/20 [00:58<01:03,  5.26s/it] 45%|████▌     | 9/20 [00:59<00:41,  3.80s/it] 50%|█████     | 10/20 [01:00<00:27,  2.79s/it] 55%|█████▌    | 11/20 [01:10<00:47,  5.27s/it] 60%|██████    | 12/20 [01:11<00:31,  3.91s/it] 65%|██████▌   | 13/20 [01:12<00:20,  2.89s/it] 70%|███████   | 14/20 [01:22<00:31,  5.24s/it] 75%|███████▌  | 15/20 [01:23<00:19,  3.86s/it] 80%|████████  | 16/20 [01:24<00:11,  2.92s/it] 85%|████████▌ | 17/20 [01:37<00:18,  6.09s/it] 90%|█████████ | 18/20 [01:38<00:08,  4.43s/it] 95%|█████████▌| 19/20 [01:39<00:03,  3.32s/it]100%|██████████| 20/20 [01:39<00:00,  2.47s/it]100%|██████████| 20/20 [01:39<00:00,  4.98s/it]
+Adapted Model Results:
+Adapt Dice All Data liver: 0.8907966613769531
+Adapt Dice All Data right kidney: 0.7411092519760132
+Adapt Dice All Data left kidney: 0.7319392561912537
+Adapt Dice All Data spleen: 0.7695308923721313
+Mean Adapt Dice All Data Score: 0.78334403
+{"prune": "RANDOM", "K": 0.1, "mean_dice": 78.3344030380249, "annotated_fraction": 0.0010883973960345828, "seconds": 102.21321105957031}

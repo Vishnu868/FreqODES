@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreqODES Results</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f6f6f4; --surface:#fcfcfb; --card:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --ink3:#8a8984;
+  --grid:#e7e6e1; --border:#e2e1dc; --accent:#b3261e; --hl:#fff4cf;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#8a8984; --s7:#4a3aa7;
+  --good:#1e7a3c; --bad:#b3261e;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --card:#1d1d1c; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#8f8e87;
+    --grid:#2f2f2c; --border:#33332f; --accent:#ff8a80; --hl:#3d3520;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#8f8e87; --s7:#9085e9;
+    --good:#7fd69b; --bad:#ff8a80;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --card:#1d1d1c; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#8f8e87;
+  --grid:#2f2f2c; --border:#33332f; --accent:#ff8a80; --hl:#3d3520;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#8f8e87; --s7:#9085e9;
+  --good:#7fd69b; --bad:#ff8a80;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 72px}
+header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+h1{font-size:1.75rem;margin:0}
+.sub{color:var(--ink2);margin:4px 0 0}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--border);margin:16px -16px 0;padding:8px 16px;display:flex;gap:6px;overflow-x:auto}
+nav a{color:var(--ink2);text-decoration:none;font-size:13px;padding:5px 10px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+nav a:hover{color:var(--ink);border-color:var(--ink3)}
+button.theme{border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer}
+section{margin-top:34px}
+h2{font-size:1.3rem;margin:0 0 4px}
+h2 .num{color:var(--accent);margin-right:6px}
+.lead{color:var(--ink2);margin:0 0 14px;max-width:880px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.g5{grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.card h3{font-size:1rem;margin:0 0 2px}
+.card .note{font-size:12.5px;color:var(--ink2);margin:6px 0 0}
+.tile .v{font-size:2rem;font-weight:700;letter-spacing:-.02em}
+.tile .l{color:var(--ink2);font-size:13px}
+.tile .d{font-size:12.5px;margin-top:4px;color:var(--ink2)}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart text{fill:var(--ink2);font-size:11px;font-family:inherit}
+.chart .axis{stroke:var(--ink3);stroke-width:1}
+.chart .gl{stroke:var(--grid);stroke-width:1}
+.chart .lbl{fill:var(--ink);font-size:11px;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink2);font-weight:600;background:var(--surface)}
+td.best{font-weight:700}
+tr.hl td{background:var(--hl)}
+.pill{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--border);color:var(--ink2)}
+.sig{color:var(--bad);font-weight:600}
+.ns{color:var(--ink3)}
+.arch{display:flex;flex-direction:column;gap:6px}
+.step{border:1px solid var(--border);border-radius:9px;padding:8px 10px;background:var(--surface);font-size:13px}
+.step b{display:block;font-size:13.5px}
+.step.diff{border:2px dashed var(--accent)}
+.arrow{text-align:center;color:var(--ink3);font-size:13px;line-height:1}
+.cmp td,.cmp th{text-align:left;white-space:normal}
+.layers td:nth-child(3),.layers td:nth-child(4),.layers th:nth-child(3),.layers th:nth-child(4){white-space:nowrap;text-align:right}
+figure{margin:0}
+figure img{width:100%;height:auto;border-radius:8px;border:1px solid var(--border);background:#fff}
+figcaption{font-size:12.5px;color:var(--ink2);margin-top:6px}
+.take li{margin:6px 0}
+#tip{position:fixed;pointer-events:none;background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:12.5px;box-shadow:0 4px 18px rgba(0,0,0,.18);opacity:0;transition:opacity .08s;z-index:20;max-width:260px}
+#tip b{display:block}
+footer{margin-top:40px;color:var(--ink3);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>FreqODES v1: results vs ODES</h1>
+    <p class="sub">CHAOS T1-DUAL MRI, in-phase → out-of-phase · online adaptation, 20 patients · b = 1% of pixels labelled per selected slice · NVIDIA T4</p>
+  </div>
+  <button class="theme" id="theme">◐ Theme</button>
+</header>
+<nav>
+  <a href="#kpi">Summary</a><a href="#arch">Architecture</a><a href="#dims">Dimensions &amp; parameters</a><a href="#detect">Shift detection</a>
+  <a href="#rep">Replication</a><a href="#main">Main comparison</a><a href="#organ">Per organ</a>
+  <a href="#patient">Per patient</a><a href="#stats">Significance</a><a href="#cost">Cost</a>
+  <a href="#ablate">Ablations</a><a href="#qual">Qualitative</a><a href="#table">Full table</a><a href="#take">Takeaways</a>
+</nav>
+
+<section id="kpi">
+  <h2><span class="num">1</span>Headline numbers</h2>
+  <p class="lead">Mean Dice (%) unless stated. K = share of slices per patient sent to the expert.</p>
+  <div class="grid g5" id="tiles"></div>
+</section>
+
+<section id="arch">
+  <h2><span class="num">2</span>Architecture: ODES vs FreqODES</h2>
+  <p class="lead">Both use the same pipeline. FreqODES changes <b>only the image-pruning block</b> (dashed red), so any difference in results comes from how slices are chosen.</p>
+  <div class="grid g2">
+    <div class="card"><h3>ODES (base paper)</h3><div class="arch" id="archA"></div></div>
+    <div class="card"><h3>FreqODES (ours)</h3><div class="arch" id="archB"></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>Pruning-score comparison</h3>
+    <div class="tw"><table class="cmp">
+      <tr><th>Aspect</th><th>ODES: BN-KL score</th><th>FreqODES: FFT / DWT score</th></tr>
+      <tr><td>Input to the score</td><td>Network batch-norm statistics</td><td>The image itself</td></tr>
+      <tr><td>Forward passes per slice</td><td>20 (augmented copies)</td><td><b>0</b></td></tr>
+      <tr><td>Features</td><td>KL divergence of BN mean/variance, last 9 BN layers</td><td>16 FFT radial-band energies + 10 Haar DWT sub-band energies (3 levels)</td></tr>
+      <tr><td>Reference</td><td>Source BN running statistics</td><td>Mean/std over 200 source slices</td></tr>
+      <tr><td>Distance</td><td>Gaussian KL</td><td>Mean squared z-score (diagonal Mahalanobis)</td></tr>
+      <tr><td>Assumptions</td><td>Gaussian channel activations</td><td>None beyond the reference set</td></tr>
+      <tr><td>Interpretable?</td><td>No (black box)</td><td><b>Yes</b>: show the spectrum behind each choice</td></tr>
+      <tr><td>Fused variant</td><td colspan="2">D = λ·BN + (1−λ)·Freq, each normalised by its batch maximum</td></tr>
+    </table></div>
+  </div>
+</section>
+
+
+<section id="dims">
+  <h2><span class="num">2b</span>Model, dimensions and parameters</h2>
+  <p class="lead">Shapes measured by running the model on one 256×256 input. B = number of slices of the incoming patient (26–50). The same network is used by ODES and FreqODES.</p>
+
+  <div class="grid g5" style="margin-bottom:14px">
+    <div class="card tile"><div class="l">Total parameters</div><div class="v">16.60 M</div><div class="d">DeepLabv3, ResNet-18 encoder</div></div>
+    <div class="card tile"><div class="l">Parameters updated online</div><div class="v">13,792</div><div class="d">BN γ, β of 29 BN layers (0.08%)</div></div>
+    <div class="card tile"><div class="l">Input</div><div class="v" style="font-size:1.35rem">B×3×256×256</div><div class="d">grey slice copied to 3 channels</div></div>
+    <div class="card tile"><div class="l">Output</div><div class="v" style="font-size:1.35rem">B×5×256×256</div><div class="d">logits: 4 organs + background</div></div>
+    <div class="card tile"><div class="l">FreqODES descriptor</div><div class="v">16 + 10</div><div class="d">FFT bands + DWT sub-bands per slice</div></div>
+  </div>
+
+  <div class="card"><h3>Input and output tensors</h3><div class="tw"><table class="cmp">
+    <tr><th>Tensor</th><th>Shape</th><th>Details</th></tr>
+    <tr><td>Raw MRI volume</td><td>D×256×256 or D×288×288</td><td>CHAOS T1-DUAL DICOM, D = 26–50 axial slices per patient</td></tr>
+    <tr><td>Network input</td><td>B×3×256×256</td><td>Resized to 256×256, per-slice z-score then min–max to [0, 1], grey channel repeated 3× for the ImageNet-pretrained encoder</td></tr>
+    <tr><td>Ground-truth label</td><td>B×5×256×256 (one-hot)</td><td>Liver 63, right kidney 126, left kidney 189, spleen 252 in the PNG masks → channels 0–3; background = channel 4</td></tr>
+    <tr><td>Network output</td><td>B×5×256×256</td><td>Per-pixel class logits; softmax → probabilities; argmax → B×256×256 mask</td></tr>
+    <tr><td>Expert label mask</td><td>B×256×256</td><td>Class index on the selected 5×5 patches, 255 (ignored) everywhere else</td></tr>
+    <tr><td>FreqODES descriptor</td><td>B×16 (FFT), B×10 (DWT)</td><td>Log relative energy of 16 radial FFT bands; LL₃ + (LH, HL, HH) × 3 Haar levels</td></tr>
+  </table></div></div>
+
+  <div class="card" style="margin-top:14px"><h3>Layer-by-layer architecture (input 1×3×256×256)</h3><div class="tw"><table class="cmp layers">
+    <tr><th>Block</th><th>Operation</th><th>Output shape (C×H×W)</th><th>Parameters</th></tr>
+    <tr><td>Stem</td><td>Conv 7×7, stride 2 + BN + ReLU</td><td>64×128×128</td><td>9,536</td></tr>
+    <tr><td>Max-pool</td><td>3×3, stride 2</td><td>64×64×64</td><td>0</td></tr>
+    <tr><td>ResNet layer1 → <b>low-level feature</b></td><td>2 basic blocks (3×3 convs)</td><td>64×64×64</td><td>147,968</td></tr>
+    <tr><td>ResNet layer2</td><td>2 basic blocks, stride 2</td><td>128×32×32</td><td>525,568</td></tr>
+    <tr><td>ResNet layer3</td><td>2 basic blocks, stride 2</td><td>256×16×16</td><td>2,099,712</td></tr>
+    <tr><td>ResNet layer4 → <b>high-level feature</b></td><td>2 basic blocks, stride 2 (output stride 32)</td><td>512×8×8</td><td>8,393,728</td></tr>
+    <tr><td>ASPP</td><td>1×1 conv + three 3×3 atrous convs (dilation 6, 12, 18) + global average-pool branch, 256 channels each → concat 1280 → 1×1 conv + BN + ReLU + dropout 0.5</td><td>256×8×8</td><td>4,131,840</td></tr>
+    <tr><td>Upsample</td><td>Bilinear ×8</td><td>256×64×64</td><td>0</td></tr>
+    <tr><td>Low-level projection</td><td>1×1 conv 64 → 48 + BN + ReLU on the layer1 output</td><td>48×64×64</td><td>3,168</td></tr>
+    <tr><td>Concatenate</td><td>256 + 48 channels</td><td>304×64×64</td><td>0</td></tr>
+    <tr><td>Decoder</td><td>3×3 conv 304→256 + BN + ReLU + dropout 0.5; 3×3 conv 256→256 + BN + ReLU + dropout 0.1</td><td>256×64×64</td><td>1,291,264</td></tr>
+    <tr><td>Classifier</td><td>1×1 conv 256 → 5</td><td>5×64×64</td><td>1,285</td></tr>
+    <tr><td>Output</td><td>Bilinear ×4 to input size</td><td>5×256×256</td><td>0</td></tr>
+    <tr class="hl"><td><b>Total</b></td><td>Encoder 11.18 M · ASPP 4.13 M · decoder 1.30 M</td><td></td><td><b>16,604,069</b></td></tr>
+  </table></div>
+  <p class="note">FreqODES adds no layers: its score works on the raw B×256×256 slices. The ODES BN-KL score uses the batch statistics of the last 9 BN layers. Slice diversity (farthest-first) uses the layer4 features pooled to 512-d; the patch diversity map uses the 64×64×64 layer1 features.</p></div>
+
+  <div class="card" style="margin-top:14px"><h3>Parameters used and why</h3><div class="tw"><table class="cmp">
+    <tr><th>Parameter</th><th>Value</th><th>Why</th></tr>
+    <tr><td colspan="3"><b>Data</b></td></tr>
+    <tr><td>Image size</td><td>256×256</td><td>Same as the paper; CHAOS slices are 256 or 288 px, so little detail is lost</td></tr>
+    <tr><td>Classes</td><td>5</td><td>4 abdominal organs + background, as in the paper's CHAOS setting</td></tr>
+    <tr><td>Source / target</td><td>In-phase / out-of-phase, 20 patients</td><td>Paper's protocol: same anatomy, different MR contrast, so a clean domain shift</td></tr>
+    <tr><td>Online batch</td><td>1 patient (26–50 slices)</td><td>Online setting: each patient is seen once, the model adapts, then the next arrives</td></tr>
+    <tr><td colspan="3"><b>Source training</b></td></tr>
+    <tr><td>Encoder init</td><td>ImageNet ResNet-18 (timm)</td><td>Same backbone as the released code; pretraining helps with only 647 slices</td></tr>
+    <tr><td>Optimizer / LR</td><td>Adam, 1e-3, cosine schedule, weight decay 1e-4</td><td>Standard, stable choice for segmentation; the paper gives no training recipe</td></tr>
+    <tr><td>Batch size / epochs</td><td>8 / 25</td><td>Fits a T4; the loss levels off around 0.16 by epoch 25</td></tr>
+    <tr><td>Loss</td><td>Cross-entropy + Dice</td><td>Dice counters class imbalance (background is about 95% of pixels)</td></tr>
+    <tr><td>Augmentation</td><td>Flips, 90° rotations, intensity jitter</td><td>More variety from a small dataset</td></tr>
+    <tr><td colspan="3"><b>Online adaptation (same for all methods)</b></td></tr>
+    <tr><td>Updated parameters</td><td>BN γ, β only (13,792)</td><td>Paper's design: few parameters, fast and stable with very few labels</td></tr>
+    <tr><td>Optimizer / LR / steps</td><td>Adam, 1e-2, 1 step per patient</td><td>Released-code setting; one pass per batch is the online constraint</td></tr>
+    <tr><td>Pixel budget b</td><td>1% of each selected slice</td><td>Paper's main setting (Table 1)</td></tr>
+    <tr><td>Patch size</td><td>5×5 (radius 2), 26 patches per slice</td><td>Released-code setting; 0.01 × 256² / 25 ≈ 26</td></tr>
+    <tr><td>Slice budget K</td><td>10%, 50%, 100%</td><td>Paper's Table 1 settings</td></tr>
+    <tr><td>Augmented copies (BN-KL)</td><td>20</td><td>As in the released code</td></tr>
+    <tr><td>Diversity map</td><td>Threshold 0.5, α = 5, on the 64×64 grid</td><td>Our re-implementation of the paper's Fig. 3 (module missing upstream)</td></tr>
+    <tr><td>Seed</td><td>12345 for every method</td><td>Same randomness for a fair comparison</td></tr>
+    <tr><td colspan="3"><b>FreqODES score</b></td></tr>
+    <tr><td>FFT bands</td><td>16 radial rings</td><td>Enough frequency resolution on a 256×256 spectrum while staying stable</td></tr>
+    <tr><td>DWT</td><td>Haar, 3 levels → 10 sub-bands</td><td>Simplest wavelet; 3 levels reach a 32×32 approximation</td></tr>
+    <tr><td>Energies</td><td>Log of relative energy</td><td>Removes brightness and contrast; log balances the small high-frequency bands</td></tr>
+    <tr><td>Reference set</td><td>200 random source slices</td><td>Stable mean/std estimate at negligible cost</td></tr>
+    <tr><td>Distance</td><td>Mean squared z-score</td><td>Simple, and needs no Gaussian assumption on network activations</td></tr>
+    <tr><td>Fusion λ</td><td>0, 0.25, 0.5, 0.75, 1</td><td>Sweep from pure frequency (0) to pure ODES (1)</td></tr>
+  </table></div></div>
+</section>
+
+<section id="detect">
+  <h2><span class="num">3</span>Does the frequency score detect the domain shift?</h2>
+  <p class="lead">Held-out in-phase slices (source) vs out-of-phase slices (target), scored with the frequency descriptor alone.</p>
+  <div class="grid g2">
+    <div class="card"><h3>ROC-AUC: separating source from target</h3><svg class="chart" id="cAuc"></svg><p class="note">1.0 = perfect separation. FFT is almost perfect.</p></div>
+    <div class="card"><h3>Mean shift score: source vs target</h3><div class="legend" id="lgScore"></div><svg class="chart" id="cScore"></svg><p class="note">Target slices score 6–8× higher than source slices.</p></div>
+  </div>
+  <figure class="card" style="margin-top:14px"><img src="__IMG_freq_analysis__" alt="Frequency analysis: FFT and DWT descriptors, score histogram, synthetic shift"><figcaption>Left to right: FFT radial-band descriptor, DWT sub-band descriptor, shift-score histogram, score under synthetic noise and blur. Out-of-phase images carry more high-frequency energy in every band.</figcaption></figure>
+</section>
+
+<section id="rep">
+  <h2><span class="num">4</span>Replication: paper vs ours</h2>
+  <p class="lead">Mean Dice for the original ODES (BN-KL pruning) on the same benchmark.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Mean Dice by setting</h3><div class="legend" id="lgRep"></div><svg class="chart" id="cRep"></svg></div>
+    <div class="card"><h3>Per-organ Dice, ODES K = 10%</h3><div class="legend" id="lgRepOrg"></div><svg class="chart" id="cRepOrg"></svg></div>
+  </div>
+</section>
+
+<section id="main">
+  <h2><span class="num">5</span>Main comparison: all pruning scores</h2>
+  <p class="lead">Same data, model, seed, budget and patient order; only the slice-selection score changes.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Dice vs annotation budget K</h3><div class="legend" id="lgK"></div><svg class="chart" id="cK"></svg><p class="note">K = 100% (all slices) is the same for every method.</p></div>
+    <div class="card"><h3>Mean Dice at K = 10%</h3><svg class="chart" id="cK10"></svg><p class="note">Dashed line: ODES. Axis starts at 76 to show the differences.</p></div>
+    <div class="card"><h3>Mean Dice at K = 50%</h3><svg class="chart" id="cK50"></svg></div>
+    <div class="card"><h3>Mean Jaccard (IoU) at K = 10% and 50%</h3><div class="legend" id="lgIou"></div><svg class="chart" id="cIou"></svg></div>
+  </div>
+</section>
+
+<section id="organ">
+  <h2><span class="num">6</span>Per-organ Dice</h2>
+  <p class="lead">Kidneys are the hardest organs and gain the most from adaptation.</p>
+  <div class="grid g2">
+    <div class="card"><h3>K = 10%</h3><div class="legend" id="lgOrg10"></div><svg class="chart" id="cOrg10"></svg></div>
+    <div class="card"><h3>K = 50%</h3><div class="legend" id="lgOrg50"></div><svg class="chart" id="cOrg50"></svg></div>
+  </div>
+</section>
+
+<section id="patient">
+  <h2><span class="num">7</span>Per-patient behaviour (K = 10%)</h2>
+  <p class="lead">The 20 target patients arrive one by one. Each point is the mean Dice of that patient right after its adaptation step.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Dice per incoming patient</h3><div class="legend" id="lgPat"></div><svg class="chart" id="cPat"></svg></div>
+    <div class="card"><h3>FreqODES FFT+DWT minus ODES, per patient</h3><svg class="chart" id="cDiff"></svg><p class="note">Bars below zero: patients where ODES did better.</p></div>
+    <div class="card"><h3>Fused λ = 0.25 minus ODES, per patient</h3><svg class="chart" id="cDiff2"></svg></div>
+    <div class="card"><h3>Gain from adaptation over source-only, per patient</h3><svg class="chart" id="cGain"></svg><p class="note">ODES at K = 10% vs the unadapted source model.</p></div>
+  </div>
+</section>
+
+<section id="stats">
+  <h2><span class="num">8</span>Statistical significance vs ODES</h2>
+  <p class="lead">Paired Wilcoxon signed-rank test over the 20 patients. <span class="sig">Red</span> = significant at p &lt; 0.05.</p>
+  <div class="card tw"><table id="tStats"></table></div>
+</section>
+
+<section id="cost">
+  <h2><span class="num">9</span>Computational cost</h2>
+  <p class="lead">Wall-clock time of one full online pass over the 20 patients (selection + labelling simulation + update), T4 GPU.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Online pass time, K = 10%</h3><svg class="chart" id="cTime"></svg></div>
+    <div class="card"><h3>Accuracy vs time, K = 10%</h3><svg class="chart" id="cTradeoff"></svg><p class="note">Up and to the left is better.</p></div>
+  </div>
+</section>
+
+<section id="ablate">
+  <h2><span class="num">10</span>Ablations (K = 10%)</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Fusion weight λ</h3><svg class="chart" id="cLam"></svg><p class="note">λ = 0 is pure frequency, λ = 1 is pure ODES.</p></div>
+    <div class="card"><h3>Diversity weighting off vs on</h3><div class="legend" id="lgDw"></div><svg class="chart" id="cDw"></svg><p class="note">Changes are ≤ 0.2 Dice, much smaller than in the paper.</p></div>
+  </div>
+</section>
+
+<section id="qual">
+  <h2><span class="num">11</span>Qualitative results and training</h2>
+  <figure class="card"><img src="__IMG_qualitative__" alt="Input, ground truth and predictions for three patients"><figcaption>Three out-of-phase patients: input, ground truth, source model, ODES (K = 10%), FreqODES (K = 10%). Red liver, green right kidney, blue left kidney, yellow spleen.</figcaption></figure>
+  <div class="grid g2" style="margin-top:14px">
+    <figure class="card"><img src="__IMG_train_loss__" alt="Source training loss"><figcaption>Source model training loss (25 epochs on in-phase MRI).</figcaption></figure>
+    <figure class="card"><img src="__IMG_online_dice__" alt="Online Dice per patient"><figcaption>Online adaptation, Dice per incoming patient.</figcaption></figure>
+  </div>
+</section>
+
+<section id="table">
+  <h2><span class="num">12</span>Full results table</h2>
+  <div class="card tw"><table id="tFull"></table></div>
+</section>
+
+<section id="take">
+  <h2><span class="num">13</span>Takeaways</h2>
+  <div class="card"><ul class="take" id="takeList"></ul></div>
+</section>
+
+<footer>Generated from results/json by make_results_html.py · github.com/Vishnu868/FreqODES · single seed; differences under 1 Dice point should be read with the p-values.</footer>
+</div>
+<div id="tip"></div>
+
+<script>
+const D=/*__DATA__*/null;
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const f2=v=>(+v).toFixed(2);
+const M=Object.fromEntries(D.methods.map(m=>[m.id,m]));
+const tip=$('tip');
+function showTip(e,html){tip.innerHTML=html;tip.style.opacity=1;const x=Math.min(e.clientX+14,innerWidth-270);tip.style.left=x+'px';tip.style.top=(e.clientY+14)+'px'}
+function hideTip(){tip.style.opacity=0}
+function el(t,a,p){const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);if(p)p.appendChild(n);return n}
+function txt(p,x,y,s,a={}){const t=el('text',Object.assign({x,y},a),p);t.textContent=s;return t}
+function legend(id,items){$(id).innerHTML=items.map(([l,c])=>`<span><i style="background:${c}"></i>${l}</span>`).join('')}
+function bind(n,html){n.addEventListener('mousemove',e=>showTip(e,html));n.addEventListener('mouseleave',hideTip)}
+function ticks(lo,hi,n=5){const raw=(hi-lo)/n,st=[0.01,0.02,0.025,0.05,0.1,0.2,0.25,0.5,1,2,2.5,5,10,20,25,50].find(v=>v>=raw*0.8)||raw;
+  const out=[];for(let v=Math.ceil(lo/st-1e-9)*st;v<=hi+1e-9;v+=st)out.push(+v.toFixed(4));return out}
+function tf(v){return Number.isInteger(v)?String(v):String(+v.toFixed(3))}
+
+/* grouped / simple bar chart; groups = [{label, values:[{v,c,name}]}] */
+function bars(id,groups,{lo=0,hi=100,h=260,ref=null,refLabel='',fmt=f2,unit='',labels=true}={}){
+  const svg=$(id),W=560,L=44,R=10,T=14,B=48;svg.setAttribute('viewBox',`0 0 ${W} ${h}`);
+  const ph=h-T-B,pw=W-L-R,y=v=>T+ph*(1-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo));
+  ticks(lo,hi).forEach(t=>{el('line',{x1:L,x2:W-R,y1:y(t),y2:y(t),class:'gl'},svg);txt(svg,L-6,y(t)+4,tf(t),{'text-anchor':'end'})});
+  const gw=pw/groups.length,nb=Math.max(...groups.map(g=>g.values.length)),bw=Math.min(34,(gw-14)/nb-2);
+  groups.forEach((g,gi)=>{
+    const x0=L+gi*gw+(gw-(bw+2)*g.values.length+2)/2;
+    g.values.forEach((b,bi)=>{
+      const x=x0+bi*(bw+2),top=y(b.v),base=y(lo),hgt=Math.max(1,base-top),r=Math.min(4,bw/2,hgt);
+      const p=el('path',{d:`M${x},${base}V${top+r}Q${x},${top} ${x+r},${top}H${x+bw-r}Q${x+bw},${top} ${x+bw},${top+r}V${base}Z`,fill:b.c},svg);
+      el('rect',{x:x-1,y:T,width:bw+2,height:ph,fill:'transparent'},svg);
+      const hit=svg.lastChild;bind(hit,`<b>${b.name||g.label}</b>${g.label}${b.name?'':''}: ${fmt(b.v)}${unit}`);
+      if(labels&&g.values.length<=2) txt(svg,x+bw/2,top-4,fmt(b.v),{'text-anchor':'middle',class:'lbl'});
+    });
+    const lab=g.label.split('\n');lab.forEach((s,i)=>txt(svg,L+gi*gw+gw/2,h-B+16+i*13,s,{'text-anchor':'middle'}));
+  });
+  el('line',{x1:L,x2:W-R,y1:y(lo),y2:y(lo),class:'axis'},svg);
+  if(ref!==null){el('line',{x1:L,x2:W-R,y1:y(ref),y2:y(ref),stroke:'var(--s1)','stroke-width':1.5,'stroke-dasharray':'5 4'},svg);txt(svg,W-R,y(ref)-5,refLabel,{'text-anchor':'end',fill:'var(--s1)'})}
+}
+
+/* line chart with crosshair; series=[{name,c,pts:[[x,y]]}] */
+function lines(id,series,{xlo,xhi,lo,hi,h=280,xt,xfmt=v=>v,yfmt=f2,xlabel='',dash={},band=null}={}){
+  const svg=$(id),W=560,L=44,R=14,T=14,B=44;svg.setAttribute('viewBox',`0 0 ${W} ${h}`);
+  const ph=h-T-B,pw=W-L-R,x=v=>L+pw*(v-xlo)/(xhi-xlo),y=v=>T+ph*(1-(v-lo)/(hi-lo));
+  ticks(lo,hi).forEach(t=>{el('line',{x1:L,x2:W-R,y1:y(t),y2:y(t),class:'gl'},svg);txt(svg,L-6,y(t)+4,tf(t),{'text-anchor':'end'})});
+  (xt||[]).forEach(t=>txt(svg,x(t),h-B+16,xfmt(t),{'text-anchor':'middle'}));
+  if(xlabel)txt(svg,L+pw/2,h-6,xlabel,{'text-anchor':'middle'});
+  el('line',{x1:L,x2:W-R,y1:T+ph,y2:T+ph,class:'axis'},svg);
+  series.forEach(s=>{
+    el('path',{d:s.pts.map((p,i)=>(i?'L':'M')+x(p[0])+','+y(p[1])).join(''),fill:'none',stroke:s.c,'stroke-width':2,'stroke-dasharray':dash[s.name]||'','stroke-linejoin':'round'},svg);
+    s.pts.forEach(p=>el('circle',{cx:x(p[0]),cy:y(p[1]),r:3.2,fill:s.c,stroke:'var(--card)','stroke-width':1.5},svg));
+  });
+  const vl=el('line',{y1:T,y2:T+ph,stroke:'var(--ink3)','stroke-dasharray':'3 3',opacity:0},svg);
+  const ov=el('rect',{x:L,y:T,width:pw,height:ph,fill:'transparent'},svg);
+  const xs=[...new Set(series.flatMap(s=>s.pts.map(p=>p[0])))].sort((a,b)=>a-b);
+  ov.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect(),mx=(e.clientX-r.left)*W/r.width,xv=xlo+(mx-L)/pw*(xhi-xlo);
+    const near=xs.reduce((a,b)=>Math.abs(b-xv)<Math.abs(a-xv)?b:a);vl.setAttribute('x1',x(near));vl.setAttribute('x2',x(near));vl.setAttribute('opacity',1);
+    showTip(e,`<b>${xfmt(near)}</b>`+series.map(s=>{const p=s.pts.find(q=>q[0]===near);return p?`<span style="color:${s.c}">■</span> ${s.name}: ${yfmt(p[1])}`:''}).filter(Boolean).join('<br>'));
+  });
+  ov.addEventListener('mouseleave',()=>{hideTip();vl.setAttribute('opacity',0)});
+}
+
+/* diverging per-patient bars around 0 */
+function diffBars(id,vals,name){
+  const svg=$(id),W=560,h=240,L=44,R=10,T=12,B=34;svg.setAttribute('viewBox',`0 0 ${W} ${h}`);
+  const m=Math.max(1,Math.ceil(Math.max(...vals.map(Math.abs)))),ph=h-T-B,pw=W-L-R,y=v=>T+ph*(1-(v+m)/(2*m));
+  ticks(-m,m,4).forEach(t=>{el('line',{x1:L,x2:W-R,y1:y(t),y2:y(t),class:'gl'},svg);txt(svg,L-6,y(t)+4,t>0?'+'+t:t,{'text-anchor':'end'})});
+  const bw=pw/vals.length-3;
+  vals.forEach((v,i)=>{const x=L+i*(pw/vals.length)+1.5,a=y(Math.max(v,0)),b=y(Math.min(v,0));
+    el('rect',{x,y:a,width:bw,height:Math.max(1,b-a),rx:2,fill:v>=0?'var(--s3)':'var(--s2)'},svg);
+    const hit=el('rect',{x,y:T,width:bw,height:ph,fill:'transparent'},svg);bind(hit,`<b>Patient ${i+1}</b>${name}: ${v>0?'+':''}${f2(v)} Dice`);
+    if(i%2===0)txt(svg,x+bw/2,h-B+15,i+1,{'text-anchor':'middle'});});
+  el('line',{x1:L,x2:W-R,y1:y(0),y2:y(0),class:'axis'},svg);txt(svg,L+pw/2,h-4,'Incoming patient',{'text-anchor':'middle'});
+}
+
+/* ---------- render ---------- */
+const bn=M.BN,fr=M.FREQ,ff=M.FFT,fu=M.FUSED,rd=M.RANDOM;
+const speed=Math.round(100*(1-fr.t10/bn.t10));
+$('tiles').innerHTML=[
+ ['Source only → ODES (K=100%)',`${f2(D.source)} → ${f2(M.BN.k100)}`,`+${f2(M.BN.k100-D.source)} Dice from adaptation`],
+ ['ODES, K = 10% (replicated)',f2(bn.k10),'paper: 76.80'],
+ ['FreqODES FFT+DWT, K = 10%',f2(fr.k10),`${fr.w10[0]>0?'+':''}${f2(fr.w10[0])} vs ODES (p = ${fr.w10[1]})`],
+ ['Fused λ = 0.25, K = 10%',f2(D.fused25),`${D.fused25w[0]>0?'+':''}${f2(D.fused25w[0])} vs ODES (p = ${D.fused25w[1]}, n.s.)`],
+ ['Shift detection AUC (FFT)',D.auc.find(a=>a[0]==='FFT')[1].toFixed(3),'source vs target slices'],
+ ['Faster online pass',`${speed}%`,`${Math.round(fr.t10)} s vs ${Math.round(bn.t10)} s (K = 10%)`],
+ ['Forward passes per slice for selection','0 vs 20','FreqODES vs ODES'],
+ ['FreqODES FFT, K = 50%',f2(ff.k50),`ODES: ${f2(bn.k50)}`],
+ ['Fused λ = 0.5, K = 50%',f2(fu.k50),`${fu.w50[0]>0?'+':''}${f2(fu.w50[0])} vs ODES (p = ${fu.w50[1]})`],
+ ['Random selection, K = 10%',f2(rd.k10),`p = ${rd.w10[1]} vs ODES`],
+].map(([l,v,d])=>`<div class="card tile"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+
+const archSteps=(diff)=>[
+ ['Incoming patient','A stack of 26–50 out-of-phase MRI slices'],
+ ['Inference','Source-trained DeepLabv3 (ResNet-18 + ASPP) predicts every slice'],
+ diff?['Image pruning: FFT + Haar DWT score','Frequency-band energies vs 200 source slices · 0 forward passes · keep top-K% slices']
+     :['Image pruning: BN-KL score','20 augmented copies per slice → BN statistics → KL vs source · keep top-K% slices'],
+ ['Acquisition','Entropy × regional impurity × diversity map → 5×5 patches covering 1% of pixels'],
+ ['Expert labels','Simulated from ground truth'],
+ ['Update','Batch-norm γ, β only · cross-entropy on labelled pixels · then next patient'],
+];
+['archA','archB'].forEach((id,k)=>{$(id).innerHTML=archSteps(k===1).map((s,i)=>(i?'<div class="arrow">↓</div>':'')+`<div class="step${i===2&&k===1?' diff':''}"><b>${s[0]}</b>${s[1]}</div>`).join('')});
+
+/* detection */
+bars('cAuc',D.auc.map(a=>({label:a[0]==='FREQ'?'FFT+DWT':a[0],values:[{v:a[1],c:'var(--s2)',name:'ROC-AUC'}]})),{lo:0.9,hi:1,fmt:v=>(+v).toFixed(3),h:230});
+legend('lgScore',[['Source (in-phase)','var(--s1)'],['Target (out-of-phase)','var(--s2)']]);
+bars('cScore',D.auc.map(a=>({label:a[0]==='FREQ'?'FFT+DWT':a[0],values:[{v:a[2],c:'var(--s1)',name:'Source'},{v:a[3],c:'var(--s2)',name:'Target'}]})),{lo:0,hi:25,h:230});
+
+/* replication */
+legend('lgRep',[['Paper','var(--s6)'],['Ours','var(--s1)']]);
+const repL={source:'Source only',k100:'K = 100%',k50:'K = 50%',k10:'K = 10%'};
+bars('cRep',Object.keys(repL).map(k=>({label:repL[k],values:[{v:D.paper[k][4],c:'var(--s6)',name:'Paper'},{v:D.ours[k][4],c:'var(--s1)',name:'Ours'}]})),{lo:40,hi:85});
+legend('lgRepOrg',[['Paper','var(--s6)'],['Ours','var(--s1)']]);
+bars('cRepOrg',D.organs.map((o,i)=>({label:o,values:[{v:D.paper.k10[i],c:'var(--s6)',name:'Paper'},{v:D.ours.k10[i],c:'var(--s1)',name:'Ours'}]})),{lo:50,hi:95});
+
+/* main */
+legend('lgK',D.methods.map(m=>[m.label,m.color]));
+lines('cK',D.methods.map(m=>({name:m.label,c:m.color,pts:[[10,m.k10],[50,m.k50],[100,m.k100]]})),{xlo:5,xhi:105,lo:77,hi:80.5,xt:[10,50,100],xfmt:v=>'K = '+v+'%',xlabel:'Slices labelled per patient (K)',dash:{'Random':'5 4'}});
+bars('cK10',D.methods.map(m=>({label:m.label.replace('FreqODES ','Freq\n').replace('Fused ','Fused\n').replace('ODES (BN-KL)','ODES\n(BN-KL)'),values:[{v:m.k10,c:m.color,name:m.label}]})),{lo:76,hi:80,ref:bn.k10,refLabel:'ODES'});
+bars('cK50',D.methods.map(m=>({label:m.label.replace('FreqODES ','Freq\n').replace('Fused ','Fused\n').replace('ODES (BN-KL)','ODES\n(BN-KL)'),values:[{v:m.k50,c:m.color,name:m.label}]})),{lo:77,hi:81,ref:bn.k50,refLabel:'ODES'});
+legend('lgIou',[['K = 10%','var(--s7)'],['K = 50%','var(--s3)']]);
+bars('cIou',D.methods.map(m=>({label:m.label.replace('FreqODES ','Freq\n').replace('Fused ','Fused\n').replace('ODES (BN-KL)','ODES\n(BN-KL)'),values:[{v:m.iou10,c:'var(--s7)',name:'IoU K=10%'},{v:m.iou50,c:'var(--s3)',name:'IoU K=50%'}]})),{lo:63,hi:68});
+
+/* per organ */
+const om=['BN','FREQ','FUSED','RANDOM'].map(k=>M[k]);
+legend('lgOrg10',om.map(m=>[m.label,m.color]));legend('lgOrg50',om.map(m=>[m.label,m.color]));
+bars('cOrg10',D.organs.map((o,i)=>({label:o,values:om.map(m=>({v:m.org10[i],c:m.color,name:m.label}))})),{lo:65,hi:90});
+bars('cOrg50',D.organs.map((o,i)=>({label:o,values:om.map(m=>({v:m.org50[i],c:m.color,name:m.label}))})),{lo:65,hi:90});
+
+/* per patient */
+const P=D.patients,idx=P.BN.map((_,i)=>i+1);
+legend('lgPat',[['Source only','var(--s6)'],['ODES (BN-KL)','var(--s1)'],['FreqODES FFT+DWT','var(--s4)'],['Fused λ=0.25','var(--s3)']]);
+lines('cPat',[{name:'Source only',c:'var(--s6)',pts:idx.map((x,i)=>[x,P.SRC[i]])},{name:'ODES (BN-KL)',c:'var(--s1)',pts:idx.map((x,i)=>[x,P.BN[i]])},{name:'FreqODES FFT+DWT',c:'var(--s4)',pts:idx.map((x,i)=>[x,P.FREQ[i]])},{name:'Fused λ=0.25',c:'var(--s3)',pts:idx.map((x,i)=>[x,P.FUSED25[i]])}],
+ {xlo:0.5,xhi:20.5,lo:Math.floor(Math.min(...P.SRC)/10)*10,hi:90,xt:[1,5,10,15,20],xfmt:v=>'Patient '+v,xlabel:'Incoming patient',dash:{'Source only':'5 4'}});
+diffBars('cDiff',P.FREQ.map((v,i)=>v-P.BN[i]),'FFT+DWT − ODES');
+diffBars('cDiff2',P.FUSED25.map((v,i)=>v-P.BN[i]),'Fused λ=0.25 − ODES');
+diffBars('cGain',P.BN.map((v,i)=>v-P.SRC[i]),'ODES − source only');
+
+/* stats table */
+const sRow=(name,K,w)=>`<tr><td>${name}</td><td>${K}</td><td>${w[0]>0?'+':''}${f2(w[0])}</td><td class="${w[1]<0.05?'sig':'ns'}">${w[1].toFixed(3)}</td><td>${w[1]<0.05?(w[0]<0?'ODES better':'Ours better'):'no significant difference'}</td></tr>`;
+$('tStats').innerHTML='<tr><th>Method</th><th>K</th><th>Mean diff vs ODES</th><th>p-value</th><th>Verdict</th></tr>'+
+ D.methods.filter(m=>m.id!=='BN').flatMap(m=>[sRow(m.label,'10%',m.w10),sRow(m.label,'50%',m.w50)]).join('')+sRow('Fused λ = 0.25','10%',D.fused25w);
+
+/* cost */
+bars('cTime',D.methods.map(m=>({label:m.label.replace('FreqODES ','Freq\n').replace('Fused ','Fused\n').replace('ODES (BN-KL)','ODES\n(BN-KL)'),values:[{v:m.t10,c:m.color,name:m.label}]})),{lo:0,hi:200,fmt:v=>Math.round(v),unit:' s'});
+(function(){const svg=$('cTradeoff'),W=560,h=280,L=44,R=14,T=14,B=44;svg.setAttribute('viewBox',`0 0 ${W} ${h}`);
+ const pts=D.methods.map(m=>[m.t10,m.k10,m.color,m.label]).concat([[D.fused25t,D.fused25,'var(--s7)','Fused λ=0.25']]);
+ const x=v=>L+(W-L-R)*(v-90)/(200-90),y=v=>T+(h-T-B)*(1-(v-77.5)/(79.5-77.5));
+ ticks(77.5,79.5,4).forEach(t=>{el('line',{x1:L,x2:W-R,y1:y(t),y2:y(t),class:'gl'},svg);txt(svg,L-6,y(t)+4,tf(t),{'text-anchor':'end'})});
+ [100,125,150,175,200].forEach(t=>txt(svg,x(t),h-B+16,t+' s',{'text-anchor':'middle'}));
+ txt(svg,L+(W-L-R)/2,h-6,'Online pass time (s)',{'text-anchor':'middle'});
+ pts.forEach(p=>{el('circle',{cx:x(p[0]),cy:y(p[1]),r:6,fill:p[2],stroke:'var(--card)','stroke-width':2},svg);
+   const dy={'FreqODES DWT':14,'FreqODES FFT+DWT':-8,'FreqODES FFT':16}[p[3]]??4;txt(svg,x(p[0])+9,y(p[1])+dy,p[3],{});const hit=el('circle',{cx:x(p[0]),cy:y(p[1]),r:14,fill:'transparent'},svg);bind(hit,`<b>${p[3]}</b>Dice ${f2(p[1])} · ${Math.round(p[0])} s`)});})();
+
+/* ablations */
+lines('cLam',[{name:'Mean Dice',c:'var(--s3)',pts:D.lam}],{xlo:-0.05,xhi:1.05,lo:77.5,hi:79.5,xt:[0,0.25,0.5,0.75,1],xfmt:v=>'λ = '+v,xlabel:'Weight on the BN (ODES) score'});
+legend('lgDw',[['Diversity weighting off','var(--s6)'],['Diversity weighting on','var(--s1)']]);
+bars('cDw',D.dw.map(r=>({label:r[0].replace('FreqODES ','FreqODES\n'),values:[{v:r[1],c:'var(--s6)',name:'D.W. off'},{v:r[2],c:'var(--s1)',name:'D.W. on'}]})),{lo:77,hi:80});
+
+/* full table */
+const best10=Math.max(...D.methods.map(m=>m.k10)),best50=Math.max(...D.methods.map(m=>m.k50));
+$('tFull').innerHTML='<tr><th>Method</th><th>K</th><th>Liver</th><th>L. kidney</th><th>R. kidney</th><th>Spleen</th><th>Mean Dice</th><th>Mean IoU</th><th>Time (s)</th></tr>'+
+ `<tr><td>Source only</td><td>–</td>${D.ours.source.slice(0,4).map(v=>`<td>${f2(v)}</td>`).join('')}<td>${f2(D.source)}</td><td>${f2(D.sourceIou)}</td><td>–</td></tr>`+
+ `<tr><td>ODES, all slices</td><td>100%</td>${D.ours.k100.slice(0,4).map(v=>`<td>${f2(v)}</td>`).join('')}<td>${f2(D.ours.k100[4])}</td><td>${f2(D.oursIou.k100)}</td><td>–</td></tr>`+
+ ['10','50'].flatMap(K=>D.methods.map(m=>{const o=K==='10'?m.org10:m.org50,d=K==='10'?m.k10:m.k50,best=K==='10'?best10:best50;
+   return `<tr class="${m.id==='BN'?'hl':''}"><td>${m.label}</td><td>${K}%</td>${o.map(v=>`<td>${f2(v)}</td>`).join('')}<td class="${d===best?'best':''}">${f2(d)}</td><td>${f2(K==='10'?m.iou10:m.iou50)}</td><td>${Math.round(K==='10'?m.t10:m.t50)}</td></tr>`})).join('')+
+ `<tr><td>Fused λ = 0.25</td><td>10%</td><td colspan="4" style="text-align:center;color:var(--ink3)">–</td><td class="best">${f2(D.fused25)}</td><td>${f2(D.fused25iou)}</td><td>${Math.round(D.fused25t)}</td></tr>`+
+ Object.keys(repL).map(k=>`<tr><td>Paper: ${k==='source'?'Source only':'ODES'}</td><td>${k==='source'?'–':repL[k].replace('K = ','')}</td>${D.paper[k].slice(0,4).map(v=>`<td>${f2(v)}</td>`).join('')}<td>${f2(D.paper[k][4])}</td><td>–</td><td>–</td></tr>`).join('');
+
+/* takeaways */
+$('takeList').innerHTML=[
+ `<b>Replication works:</b> adaptation lifts Dice from ${f2(D.source)} to ${f2(bn.k100)} (paper: 52.99 → 78.61).`,
+ `<b>The frequency score is an excellent shift detector:</b> AUC ${D.auc.find(a=>a[0]==='FFT')[1].toFixed(3)}, computed from the image with no network passes.`,
+ `<b>It is about ${speed}% faster</b> (${Math.round(fr.t10)} s vs ${Math.round(bn.t10)} s) and explainable.`,
+ `<b>Used alone it does not beat ODES in accuracy:</b> ${f2(fr.k10)} vs ${f2(bn.k10)} at K = 10% (p = ${fr.w10[1]}).`,
+ `<b>Fused with the BN score it matches ODES:</b> λ = 0.25 gives ${f2(D.fused25)} vs ${f2(bn.k10)} (p = ${D.fused25w[1]}, not significant).`,
+ `<b>Random selection is competitive</b> (${f2(rd.k10)}, p = ${rd.w10[1]}), because the in-phase → out-of-phase shift affects every slice almost equally.`,
+ `<b>Lesson:</b> knowing <i>how shifted</i> a slice is differs from knowing <i>which labels help most</i>. This motivates FreqODES v2 (frequency × organ area × uncertainty).`,
+].map(s=>`<li>${s}</li>`).join('');
+
+/* theme */
+$('theme').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'};
+</script>
+</body>
+</html>
