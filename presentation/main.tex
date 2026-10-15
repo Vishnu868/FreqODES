@@ -348,7 +348,7 @@ make_report.py     tables, plots, LaTeX numbers
       \node[blk=blue] (x) {Slice $x_j$ + inference prediction};
       \node[blk=red, below left=5mm and -6mm of x] (fq) {FFT bands\\+ Haar DWT\\shift $\hat D_{freq}$};
       \node[blk=red, below right=5mm and -6mm of x] (h) {Prediction\\entropy $\hat H$};
-      \node[blk=yellow, below=14mm of x] (m) {$S=\hat D_{freq}\times\hat H$};
+      \node[blk=yellow, below=20mm of x] (m) {$S=\hat D_{freq}\times\hat H$};
       \node[blk=green, below=3mm of m] (sel) {top-$K\%$ slices};
       \node[blk=green, below=3mm of sel] (rest) {Acquisition + BN update\\(unchanged)};
       \draw[arr] (x) -- (fq); \draw[arr] (x) -- (h);
@@ -380,8 +380,8 @@ make_report.py     tables, plots, LaTeX numbers
   \end{table}
   \vspace{-2mm}
   \centering
-  \includegraphics[height=0.33\textheight]{figures/v2_results.png}\\
-  {\scriptsize At $K=10\%$ FreqODES-U beats ODES on every seed (\VFeTenSa, \VFeTenSb, \VFeTenSc\ vs.\ \VBnTenSa, \VBnTenSb, \VBnTenSc), is about 8$\times$ more stable across seeds and $\approx$33\% faster. At $K=50\%$ ODES stays best.}
+  \includegraphics[height=0.27\textheight]{figures/v2_results.png}\\
+  {\scriptsize At $K=10\%$ FreqODES-U beats ODES on every seed (\VFeTenSa, \VFeTenSb, \VFeTenSc\ vs.\ \VBnTenSa, \VBnTenSb, \VBnTenSc), 8$\times$ more stable, $\approx$33\% faster. At $K=50\%$ ODES stays best.}
 \end{frame}
 
 % =============================== CLOSING ===============================
