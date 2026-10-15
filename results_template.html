@@ -89,23 +89,52 @@ footer{margin-top:40px;color:var(--ink3);font-size:12.5px}
 <div class="wrap">
 <header>
   <div>
-    <h1>FreqODES v1: results vs ODES</h1>
+    <h1>FreqODES vs ODES: results</h1>
     <p class="sub">CHAOS T1-DUAL MRI, in-phase → out-of-phase · online adaptation, 20 patients · b = 1% of pixels labelled per selected slice · NVIDIA T4</p>
   </div>
   <button class="theme" id="theme">◐ Theme</button>
 </header>
 <nav>
-  <a href="#kpi">Summary</a><a href="#arch">Architecture</a><a href="#dims">Dimensions &amp; parameters</a><a href="#detect">Shift detection</a>
+  <a href="#v2">FreqODES-U (final)</a><a href="#kpi">v1 summary</a><a href="#arch">Architecture</a><a href="#dims">Dimensions &amp; parameters</a><a href="#detect">Shift detection</a>
   <a href="#rep">Replication</a><a href="#main">Main comparison</a><a href="#organ">Per organ</a>
   <a href="#patient">Per patient</a><a href="#stats">Significance</a><a href="#cost">Cost</a>
   <a href="#ablate">Ablations</a><a href="#qual">Qualitative</a><a href="#table">Full table</a><a href="#take">Takeaways</a>
 </nav>
 
+<section id="v2">
+  <h2><span class="num">★</span>Final result: FreqODES-U beats ODES at a 10% budget (3 seeds)</h2>
+  <p class="lead">FreqODES-U scores each slice as <b>frequency shift × model uncertainty</b>. It keeps the image-based FFT/DWT signal, adds the prediction entropy that ODES already computes, and still needs no extra forward passes. Every variant below was run with 3 seeds (1, 2, 12345); Δ and p come from a paired Wilcoxon test against ODES over 60 patient-runs.</p>
+  <div class="grid g5" id="v2tiles"></div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Mean Dice ± std, K = 10% of slices</h3><svg class="chart" id="cV2a"></svg><p class="note">Dots: individual seeds. Dashed line: ODES mean.</p></div>
+    <div class="card"><h3>Mean Dice ± std, K = 50% of slices</h3><svg class="chart" id="cV2b"></svg><p class="note">At the larger budget ODES stays best.</p></div>
+  </div>
+  <div class="card tw" style="margin-top:14px"><h3>All variants, 3 seeds</h3><table id="tV2"></table></div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>How we got here</h3><div class="arch">
+      <div class="step"><b>v1: frequency shift only</b>Near-perfect shift detector (AUC 0.994), but picks shifted, nearly empty end slices. Does not beat ODES.</div>
+      <div class="arrow">↓ analysis: shifted ≠ useful to label</div>
+      <div class="step"><b>v2 (planned): shift × organ area × uncertainty</b>Designed with two ablations, each dropping one factor, before running.</div>
+      <div class="arrow">↓ 3 seeds, all variants reported</div>
+      <div class="step diff"><b>FreqODES-U: shift × uncertainty</b>Best variant. The organ-area term turned out to hurt.</div>
+    </div></div>
+    <div class="card"><h3>Honest caveats</h3><ul class="take">
+      <li>FreqODES-U was the best of the planned v2 ablations, not the planned v2 score itself.</li>
+      <li>At K = 50%, ODES remains slightly better.</li>
+      <li>One adaptation pair (CHAOS in-phase → out-of-phase), 20 patients, 3 seeds; expert labels are simulated.</li>
+      <li>The single-seed v1 numbers in the sections below differ from these 3-seed means by up to about 1 Dice point, which is why we used several seeds.</li>
+    </ul></div>
+  </div>
+  <figure class="card" style="margin-top:14px"><img src="__IMG_v2_results__" alt="Three-seed results figure"><figcaption>Static version of the 3-seed comparison (also used in the slides and report).</figcaption></figure>
+</section>
+
 <section id="kpi">
-  <h2><span class="num">1</span>Headline numbers</h2>
+  <h2><span class="num">1</span>Headline numbers (v1 study, single seed)</h2>
   <p class="lead">Mean Dice (%) unless stated. K = share of slices per patient sent to the expert.</p>
   <div class="grid g5" id="tiles"></div>
 </section>
+
+
 
 <section id="arch">
   <h2><span class="num">2</span>Architecture: ODES vs FreqODES</h2>
@@ -223,7 +252,7 @@ footer{margin-top:40px;color:var(--ink3);font-size:12.5px}
 </section>
 
 <section id="main">
-  <h2><span class="num">5</span>Main comparison: all pruning scores</h2>
+  <h2><span class="num">5</span>v1 main comparison: all pruning scores (single seed)</h2>
   <p class="lead">Same data, model, seed, budget and patient order; only the slice-selection score changes.</p>
   <div class="grid g2">
     <div class="card"><h3>Dice vs annotation budget K</h3><div class="legend" id="lgK"></div><svg class="chart" id="cK"></svg><p class="note">K = 100% (all slices) is the same for every method.</p></div>
@@ -474,8 +503,53 @@ $('takeList').innerHTML=[
  `<b>Used alone it does not beat ODES in accuracy:</b> ${f2(fr.k10)} vs ${f2(bn.k10)} at K = 10% (p = ${fr.w10[1]}).`,
  `<b>Fused with the BN score it matches ODES:</b> λ = 0.25 gives ${f2(D.fused25)} vs ${f2(bn.k10)} (p = ${D.fused25w[1]}, not significant).`,
  `<b>Random selection is competitive</b> (${f2(rd.k10)}, p = ${rd.w10[1]}), because the in-phase → out-of-phase shift affects every slice almost equally.`,
- `<b>Lesson:</b> knowing <i>how shifted</i> a slice is differs from knowing <i>which labels help most</i>. This motivates FreqODES v2 (frequency × organ area × uncertainty).`,
-].map(s=>`<li>${s}</li>`).join('');
+ `<b>Lesson:</b> knowing <i>how shifted</i> a slice is differs from knowing <i>which labels help most</i>. This led to FreqODES-U.`,
+].concat(D.v2?[`<b>FreqODES-U (frequency × uncertainty), 3 seeds:</b> ${f2(D.v2.rows.find(r=>r.method==='FREQENT'&&r.K==='0.1').mean)} vs ${f2(D.v2.rows.find(r=>r.method==='BN'&&r.K==='0.1').mean)} for ODES at K = 10% (p = ${D.v2.rows.find(r=>r.method==='FREQENT'&&r.K==='0.1').p_vs_odes.toFixed(3)}), more stable and about a third faster; ODES stays best at K = 50%.`]:[]).map(s=>`<li>${s}</li>`).join('');
+
+
+/* ---------- FreqODES-U (3 seeds) ---------- */
+if(D.v2){
+  const V=D.v2, rows=V.rows, get=(m,K)=>rows.find(r=>r.method===m&&r.K===K);
+  const vcol={BN:'var(--s1)',FREQ:'var(--s4)',FREQV2:'var(--s5)',FREQAREA:'var(--s6)',FREQENT:'var(--s3)',RANDOM:'var(--s7)'};
+  const vlab={BN:'ODES\n(BN-KL)',FREQ:'v1\nfreq',FREQV2:'v2 freq×\narea×unc',FREQAREA:'freq×\narea',FREQENT:'FreqODES-U\nfreq×unc',RANDOM:'Random'};
+  const bn10=get('BN','0.1'),fe10=get('FREQENT','0.1'),bn50=get('BN','0.5'),fe50=get('FREQENT','0.5');
+  $('v2tiles').innerHTML=[
+    ['FreqODES-U, K = 10%',f2(fe10.mean),`± ${f2(fe10.std)} over 3 seeds`],
+    ['ODES, K = 10%',f2(bn10.mean),`± ${f2(bn10.std)} over 3 seeds`],
+    ['Gain over ODES',`${fe10.diff_vs_odes>0?'+':''}${f2(fe10.diff_vs_odes)}`,`p = ${fe10.p_vs_odes.toFixed(3)} (60 paired patient-runs)`],
+    ['Faster online pass',`${Math.round(100*(1-fe10.seconds/bn10.seconds))}%`,`${Math.round(fe10.seconds)} s vs ${Math.round(bn10.seconds)} s`],
+    ['K = 50%: ODES vs FreqODES-U',`${f2(bn50.mean)} / ${f2(fe50.mean)}`,`ODES stays best (p = ${fe50.p_vs_odes.toFixed(3)})`],
+  ].map(([l,v,d])=>`<div class="card tile"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+
+  function errBars(id,K){
+    const rs=rows.filter(r=>r.K===K),svg=$(id),W=560,h=280,L=44,R=10,T=14,B=48,lo=76,hi=80.5;
+    svg.setAttribute('viewBox',`0 0 ${W} ${h}`);
+    const ph=h-T-B,pw=W-L-R,y=v=>T+ph*(1-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo));
+    ticks(lo,hi).forEach(t=>{el('line',{x1:L,x2:W-R,y1:y(t),y2:y(t),class:'gl'},svg);txt(svg,L-6,y(t)+4,tf(t),{'text-anchor':'end'})});
+    const gw=pw/rs.length,bw=Math.min(40,gw-18);
+    rs.forEach((r,i)=>{
+      const x=L+i*gw+(gw-bw)/2,top=y(r.mean),base=y(lo),rr=4;
+      el('path',{d:`M${x},${base}V${top+rr}Q${x},${top} ${x+rr},${top}H${x+bw-rr}Q${x+bw},${top} ${x+bw},${top+rr}V${base}Z`,fill:vcol[r.method]},svg);
+      const cx=x+bw/2;
+      el('line',{x1:cx,x2:cx,y1:y(r.mean+r.std),y2:y(r.mean-r.std),stroke:'var(--ink)','stroke-width':1.5},svg);
+      [r.mean+r.std,r.mean-r.std].forEach(v=>el('line',{x1:cx-5,x2:cx+5,y1:y(v),y2:y(v),stroke:'var(--ink)','stroke-width':1.5},svg));
+      r.per_seed.forEach((v,j)=>el('circle',{cx:cx+(j-1)*7,cy:y(v),r:3,fill:'var(--ink)',stroke:'var(--card)','stroke-width':1},svg));
+      txt(svg,cx,y(r.mean+r.std)-6,f2(r.mean),{'text-anchor':'middle',class:'lbl'});
+      vlab[r.method].split('\n').forEach((s,k)=>txt(svg,L+i*gw+gw/2,h-B+16+k*13,s,{'text-anchor':'middle'}));
+      const hit=el('rect',{x:L+i*gw,y:T,width:gw,height:ph,fill:'transparent'},svg);
+      bind(hit,`<b>${r.label}</b>Mean ${f2(r.mean)} ± ${f2(r.std)}<br>Seeds: ${r.per_seed.map(f2).join(' / ')}<br>${r.method==='BN'?'reference':`Δ vs ODES ${r.diff_vs_odes>0?'+':''}${f2(r.diff_vs_odes)}, p = ${r.p_vs_odes.toFixed(3)}`}<br>IoU ${f2(r.iou)} · ${Math.round(r.seconds)} s`);
+    });
+    const b=rs.find(r=>r.method==='BN').mean;
+    el('line',{x1:L,x2:W-R,y1:y(b),y2:y(b),stroke:'var(--s1)','stroke-width':1.5,'stroke-dasharray':'5 4'},svg);
+    el('line',{x1:L,x2:W-R,y1:y(lo),y2:y(lo),class:'axis'},svg);
+  }
+  errBars('cV2a','0.1'); errBars('cV2b','0.5');
+
+  const order=['BN','FREQ','FREQV2','FREQAREA','FREQENT','RANDOM'];
+  $('tV2').innerHTML='<tr><th>Selection score</th><th>K</th><th>Mean Dice</th><th>Std</th><th>Seed 1</th><th>Seed 2</th><th>Seed 12345</th><th>Δ vs ODES</th><th>p</th><th>IoU</th><th>Time (s)</th></tr>'+
+    ['0.1','0.5'].flatMap(K=>order.map(m=>get(m,K)).filter(Boolean).map(r=>
+      `<tr class="${r.method==='FREQENT'?'hl':''}"><td>${r.label.replace('Ablation: freq x entropy','FreqODES-U: freq × uncertainty').replace(/ x /g,' × ')}</td><td>${Math.round(+K*100)}%</td><td class="${r.method==='FREQENT'&&K==='0.1'?'best':''}">${f2(r.mean)}</td><td>${f2(r.std)}</td>${r.per_seed.map(v=>`<td>${f2(v)}</td>`).join('')}<td>${r.method==='BN'?'–':(r.diff_vs_odes>0?'+':'')+f2(r.diff_vs_odes)}</td><td class="${r.method!=='BN'&&r.p_vs_odes<0.05?'sig':'ns'}">${r.method==='BN'?'–':(r.p_vs_odes<0.001?'&lt;0.001':r.p_vs_odes.toFixed(3))}</td><td>${f2(r.iou)}</td><td>${Math.round(r.seconds)}</td></tr>`)).join('');
+}
 
 /* theme */
 $('theme').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'};

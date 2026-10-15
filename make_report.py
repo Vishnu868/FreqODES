@@ -14,7 +14,7 @@ from scipy.stats import wilcoxon
 
 src, out = sys.argv[1], sys.argv[2]
 os.makedirs(out, exist_ok=True)
-R = {os.path.basename(f).replace('_run_0.json', ''): json.load(open(f)) for f in glob.glob(os.path.join(src, 'json', '*.json'))}
+R = {os.path.basename(f).replace('_run_0.json', ''): json.load(open(f)) for f in glob.glob(os.path.join(src, 'json', '*.json')) if not os.path.basename(f).startswith('V2_')}
 organs = R['source_only']['organs']
 # paper column order: liver, L.kidney, R.kidney, spleen
 order = [organs.index(o) for o in ('liver', 'left kidney', 'right kidney', 'spleen')]

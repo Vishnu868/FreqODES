@@ -10,6 +10,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 
 \input{figures/numbers.tex}
+\input{figures/v2_numbers.tex}
 
 % ---------------- GROUP DETAILS (edit) ----------------
 \newcommand{\GroupName}{Group \textless{}No.\textgreater{}}
@@ -42,7 +43,7 @@
 \cortext[cor1]{Corresponding author}
 
 \begin{abstract}
-Segmentation networks trained on one MR sequence degrade when deployed on another. ODES (MICCAI 2025) adapts a pre-trained network online, patient by patient, by asking an expert to label 1\% of the pixels of a pruned subset of slices and updating only the batch-normalisation (BN) layers. Its image-pruning step ranks slices by the KL divergence between BN statistics of the source model and of augmented copies of each slice. We reproduce ODES on CHAOS T1-DUAL in-phase$\rightarrow$out-of-phase MRI after completing the public code (training script, missing diversity module, device and selection fixes), obtaining a mean Dice of \DODESK\% with all slices annotated (paper: 78.61\%) and \DBNKTen\% with 10\% of slices (paper: 76.80\%). We then propose FreqODES, which replaces the network-internal score by an interpretable frequency-domain shift score built from FFT radial-band energies and Haar wavelet sub-band energies, optionally fused with the BN score. The frequency score separates source from target slices with ROC-AUC \AUCFFT\ and requires no forward passes, reducing the online adaptation time by about one third. Used alone, it trails ODES by less than one Dice point (FFT at 10\% of slices: \DiffFFTKTen, $p=\PFFTKTen$, paired Wilcoxon), whereas the fused score matches ODES (\DFUSEDKTenLQuarter\% vs.\ \DBNKTen\% with $\lambda=0.25$; \DFUSEDKFiftyLFifty\% vs.\ \DBNKFifty\% at 50\%). We analyse this negative result: a good detector of domain shift is not necessarily a good detector of annotation value.
+Segmentation networks trained on one MR sequence degrade when deployed on another. ODES (MICCAI 2025) adapts a pre-trained network online, patient by patient, by asking an expert to label 1\% of the pixels of a pruned subset of slices and updating only the batch-normalisation (BN) layers. Its image-pruning step ranks slices by the KL divergence between BN statistics of the source model and of augmented copies of each slice. We reproduce ODES on CHAOS T1-DUAL in-phase$\rightarrow$out-of-phase MRI after completing the public code (training script, missing diversity module, device and selection fixes), obtaining a mean Dice of \DODESK\% with all slices annotated (paper: 78.61\%) and \DBNKTen\% with 10\% of slices (paper: 76.80\%). We then propose FreqODES, which replaces the network-internal score by an interpretable frequency-domain shift score built from FFT radial-band energies and Haar wavelet sub-band energies, optionally fused with the BN score. The frequency score separates source from target slices with ROC-AUC \AUCFFT\ and requires no forward passes, reducing the online adaptation time by about one third, but used alone it does not beat ODES: a good detector of domain shift is not necessarily a good detector of annotation value. Guided by this analysis, the final method, FreqODES-U, multiplies the frequency shift by the model's prediction uncertainty. Over three seeds, with 10\% of slices annotated, it reaches \VFeTenMean\% mean Dice against \VBnTenMean\% for ODES ($\Delta=\VFeTenDiff$, $p=\VFeTenP$, paired Wilcoxon over 60 patient-runs), with a seed-to-seed standard deviation of \VFeTenStd\ instead of \VBnTenStd\ and a one-third shorter adaptation pass; with 50\% of slices ODES remains slightly better (\VBnFiftyMean\% vs.\ \VFeFiftyMean\%).
 \end{abstract}
 
 \begin{keywords}
@@ -60,7 +61,8 @@ This report has two goals. First, we \textbf{replicate} ODES on the CHAOS IP$\ri
 \begin{itemize}
   \item a complete, runnable replication of ODES, including the components missing from the public repository;
   \item FreqODES, an interpretable, forward-pass-free FFT/DWT domain-shift score and its fusion with the BN score;
-  \item a controlled comparison at equal annotation budgets with ablations and a paired statistical test, including an analysis of why the modification does not help at the smallest budget.
+  \item an analysis of why the shift score alone does not improve annotation selection, and FreqODES-U, which combines frequency shift with model uncertainty and outperforms ODES at a 10\% slice budget over three seeds;
+  \item controlled comparisons at equal annotation budgets with ablations and paired statistical tests, reporting every evaluated variant.
 \end{itemize}
 
 \section{Base paper and replication}
@@ -108,6 +110,13 @@ For a slice $x$ (zero-mean), the \textbf{FFT descriptor} is the vector of log re
 D_{freq}(x)=\frac{1}{d}\sum_{f=1}^{d}\left(\frac{\phi_f(x)-\mu_f}{\sigma_f}\right)^2 ,
 \end{equation}
 computed for FFT, DWT, or their average (FFT+DWT). The \textbf{fused} variant combines both criteria after normalising each by its batch maximum: $D=\lambda\hat D_{BN}+(1-\lambda)\hat D_{freq}$; $\lambda=1$ recovers ODES.
+
+\subsection{FreqODES-U: frequency shift times uncertainty}
+The first evaluation (Section~\ref{sec:results}) showed that the most frequency-shifted slices are not always the most useful to label. We therefore designed, before running it, a second score that also asks whether the model is struggling: v2 $=\hat D_{freq}\times\hat A\times\hat H$, where $\hat A$ is the fraction of the slice predicted as organ and $\hat H$ is the mean pixel entropy of the softmax prediction, each normalised by its batch maximum, together with the two ablations that drop one factor each. The variant
+\begin{equation}
+S(x_j)=\hat D_{freq}(x_j)\cdot\hat H(x_j),
+\end{equation}
+which we call \textbf{FreqODES-U}, performed best. $\hat H$ is computed from the inference prediction that ODES already makes, so the score still needs no extra forward passes. All variants were evaluated with three seeds (1, 2, 12345) and are reported in full.
 
 \subsection{Rationale}
 The frequency score uses an explicit, physically interpretable signal---how the image's energy is distributed across spatial frequencies---instead of activation statistics that assume Gaussian channels. It needs no network forward passes and no augmentation, and the descriptors can be visualised to explain each selection. All other ODES stages are untouched, so differences are attributable to the pruning criterion alone.
@@ -221,16 +230,46 @@ $\lambda$ & Mean DSC \\
 \label{fig:budget}
 \end{figure}
 
+\subsection{FreqODES-U over three seeds}
+Table~\ref{tab:v2} and Fig.~\ref{fig:v2} report all v2 variants over three seeds. With 10\% of slices annotated, FreqODES-U reaches \VFeTenMean\% mean Dice against \VBnTenMean\% for ODES ($\Delta=\VFeTenDiff$, $p=\VFeTenP$ over 60 paired patient-runs) and is better on every seed (\VFeTenSa, \VFeTenSb, \VFeTenSc\ vs.\ \VBnTenSa, \VBnTenSb, \VBnTenSc). It is also far more stable across seeds (standard deviation \VFeTenStd\ vs.\ \VBnTenStd) and about one third faster. The pre-planned v2 with the organ-area term (\VFvTenMean\%) and the area-only ablation (\VFaTenMean\%) are not significantly different from ODES, so the area factor does not help. With 50\% of slices annotated ODES remains best (\VBnFiftyMean\% vs.\ \VFeFiftyMean\%, $p=\VFeFiftyP$). The single-seed results of the previous subsections differ from these averages by up to about one Dice point, which shows why several seeds are needed for differences of this size.
+
+\begin{table}[t]
+\caption{FreqODES-U and its variants over three seeds. Mean Dice $\pm$ standard deviation (\%); $\Delta$ and $p$: paired Wilcoxon signed-rank test against ODES over 60 patient-runs; time: full online pass on a T4.}
+\label{tab:v2}
+\centering\small
+\begin{tabular}{lcccc@{\hskip 5mm}ccc}
+\toprule
+ & \multicolumn{4}{c}{$K=10\%$} & \multicolumn{3}{c}{$K=50\%$} \\
+Selection score & DSC & $\Delta$ / $p$ & IoU & Time (s) & DSC & $\Delta$ / $p$ & IoU \\
+\midrule
+ODES (BN-KL) & \VBnTenMean$\pm$\VBnTenStd & -- & \VBnTenIoU & \VBnTenTime & \VBnFiftyMean$\pm$\VBnFiftyStd & -- & \VBnFiftyIoU \\
+v1: frequency & \VFqTenMean$\pm$\VFqTenStd & \VFqTenDiff\ / \VFqTenP & \VFqTenIoU & \VFqTenTime & \VFqFiftyMean$\pm$\VFqFiftyStd & \VFqFiftyDiff\ / \VFqFiftyP & \VFqFiftyIoU \\
+v2: freq $\times$ area $\times$ unc. & \VFvTenMean$\pm$\VFvTenStd & \VFvTenDiff\ / \VFvTenP & \VFvTenIoU & \VFvTenTime & \VFvFiftyMean$\pm$\VFvFiftyStd & \VFvFiftyDiff\ / \VFvFiftyP & \VFvFiftyIoU \\
+freq $\times$ area & \VFaTenMean$\pm$\VFaTenStd & \VFaTenDiff\ / \VFaTenP & \VFaTenIoU & \VFaTenTime & -- & -- & -- \\
+\textbf{FreqODES-U} & \textbf{\VFeTenMean}$\pm$\VFeTenStd & \VFeTenDiff\ / \VFeTenP & \VFeTenIoU & \VFeTenTime & \VFeFiftyMean$\pm$\VFeFiftyStd & \VFeFiftyDiff\ / \VFeFiftyP & \VFeFiftyIoU \\
+Random & \VRdTenMean$\pm$\VRdTenStd & \VRdTenDiff\ / \VRdTenP & \VRdTenIoU & \VRdTenTime & \VRdFiftyMean$\pm$\VRdFiftyStd & \VRdFiftyDiff\ / \VRdFiftyP & \VRdFiftyIoU \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/v2_results.png}
+\caption{Three-seed results. Bars: mean Dice; error bars: standard deviation; dots: individual seeds; dashed line: ODES.}
+\label{fig:v2}
+\end{figure}
+
 \section{Discussion}
-Used alone, the frequency score did not improve segmentation accuracy, although it is a better and cheaper detector of domain shift; fused with the BN score it only matches ODES. We see four reasons.
+Used alone, the frequency score did not improve segmentation accuracy, although it is a better and cheaper detector of domain shift; fused with the BN score it only matched ODES. We see four reasons.
 \textbf{(1) Objective mismatch.} The frequency score answers ``how different is this slice from the source?'', whereas pruning should answer ``which labels will most improve the model?''. The slices with the most unusual spectra are often at the ends of the volume, where organs are small or absent; labelling them teaches the BN layers little. The BN score measures what the \emph{network} finds unusual, which correlates better with its errors.
 \textbf{(2) Global, homogeneous shift.} IP$\rightarrow$OOP is a sequence change that affects every slice, so almost all target slices are ``shifted'' and the useful information is in the ranking among them; this is also why random pruning is competitive.
 \textbf{(3) Small effect sizes.} Differences between criteria are about one Dice point, so a single seed and 20 patients limit the conclusions; we report paired tests rather than claim small gains.
 \textbf{(4) Saturation.} All adapted variants lie between 78 and 80 Dice, close to the result with every slice annotated, so the pruning criterion has little room to make a difference on this pair.
-The benefits that remain are practical: the frequency score is interpretable, needs no forward passes, and reduces the online adaptation time by about one third at a cost of less than one Dice point. Promising next steps are weighting the frequency score by predicted foreground or uncertainty, computing spectra inside organ regions of interest, evaluating CHAOS$\rightarrow$DUKE where shifts are larger and more heterogeneous, and averaging over several seeds and stream orders.
+Reason (1) suggested the fix that FreqODES-U implements: weighting the shift by the model's uncertainty keeps the image-level signal but favours slices on which the network is actually unsure, and this beats ODES at the 10\% budget. That the organ-area term did not help suggests that uncertainty already captures what makes a slice informative. At the 50\% budget, half of each volume is labelled anyway and the selection criterion matters less, which is consistent with ODES keeping a small lead there.
+\textbf{Limitations.} FreqODES-U was the best of the planned v2 ablations rather than the planned score itself, so its advantage should be confirmed on further data; we report all variants to make this transparent. The evaluation uses one adaptation pair (CHAOS IP$\rightarrow$OOP), 20 patients and three seeds, and the expert is simulated with ground-truth labels. Next steps are CHAOS$\rightarrow$DUKE and BMC$\rightarrow$RUNMC, where shifts are larger and more heterogeneous, more seeds and stream orders, and computing spectra inside organ regions of interest.
 
 \section{Conclusion}
-We reproduced ODES on CHAOS T1-DUAL IP$\rightarrow$OOP after completing its public implementation, obtaining results close to the published ones. We proposed FreqODES, which ranks slices for expert annotation with an FFT/DWT frequency-domain shift score. It detects the domain shift almost perfectly, is about one third faster and costs less than one Dice point when used alone; fused with the BN score it matches ODES but does not significantly improve on it. The analysis suggests that shift magnitude alone is an incomplete proxy for annotation value, and that combining image-level frequency cues with model-level uncertainty is the most promising direction.
+We reproduced ODES on CHAOS T1-DUAL IP$\rightarrow$OOP after completing its public implementation, obtaining results close to the published ones. We proposed FreqODES, which ranks slices for expert annotation with an FFT/DWT frequency-domain shift score. It detects the domain shift almost perfectly and is about one third faster, but shift magnitude alone is an incomplete proxy for annotation value. Combining it with model uncertainty, FreqODES-U outperforms ODES when only 10\% of slices are annotated (\VFeTenMean\% vs.\ \VBnTenMean\% Dice over three seeds, $p=\VFeTenP$), with lower variance and lower cost, while ODES stays slightly better at a 50\% budget.
 
 \section*{Code and data availability}
 Code, configuration, logs and result files: \url{https://github.com/Vishnu868/FreqODES}. CHAOS is available from Zenodo (record 3431873).

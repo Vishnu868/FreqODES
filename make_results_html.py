@@ -75,8 +75,9 @@ data = {
     'source': R['source_only']['mean_dice'], 'sourceIou': R['source_only']['mean_jaccard'],
     'fused25': R['FUSED_K0.1_lam0.25']['mean_dice'], 'fused25iou': R['FUSED_K0.1_lam0.25']['mean_jaccard'],
     'fused25t': R['FUSED_K0.1_lam0.25']['seconds'], 'fused25w': wil('FUSED_K0.1_lam0.25', 'BN_K0.1'),
+    'v2': json.load(open(os.path.join(src, 'v2_summary.json'))) if os.path.exists(os.path.join(src, 'v2_summary.json')) else None,
 }
-IMG = {k: img(k + '.png') for k in ('freq_analysis', 'qualitative', 'train_loss', 'online_dice')}
+IMG = {k: img(k + '.png') for k in ('freq_analysis', 'qualitative', 'train_loss', 'online_dice', 'v2_results')}
 
 html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_template.html'), encoding='utf-8').read()
 html = html.replace('/*__DATA__*/null', json.dumps(data))
