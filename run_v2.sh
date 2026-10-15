@@ -12,5 +12,7 @@ for S in ${SEEDS:-12345 1 2}; do
     for P in BN FREQ FREQV2 RANDOM; do run V2_${P}_K${K}_s${S} ACTIVE.PRUNE $P ACTIVE.BUDGET_SLICE $K RNG_SEED $S; done
   done
   for P in FREQAREA FREQENT; do run V2_${P}_K0.1_s${S} ACTIVE.PRUNE $P ACTIVE.BUDGET_SLICE 0.1 RNG_SEED $S; done
+  # follow-up after the ablation: best variant also at K = 50 %
+  run V2_FREQENT_K0.5_s${S} ACTIVE.PRUNE FREQENT ACTIVE.BUDGET_SLICE 0.5 RNG_SEED $S
 done
 echo V2 DONE
