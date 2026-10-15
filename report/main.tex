@@ -9,6 +9,11 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 
+% Remove the template's left footer ("<short authors>: Preprint submitted to Elsevier"); keep "Page x of y"
+\ExplSyntaxOn
+\cs_set:Npn \__first_footerline: {}
+\ExplSyntaxOff
+
 \input{figures/numbers.tex}
 \input{figures/v2_numbers.tex}
 
