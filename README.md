@@ -2,6 +2,8 @@
 
 Course project for **22AIE437 Medical Image Processing** (B.Tech CSE (AI), Amrita School of Artificial Intelligence).
 
+**Group A12:** Vishnu Vardhan (CB.SC.U4AIE23043) · Nithya Sai (CB.SC.U4AIE23021)
+
 This repository does two things:
 
 1. **Reproduces** [ODES: Online Domain Adaptation with Expert Guidance for Medical Image Segmentation](https://papers.miccai.org/miccai-2025/paper/5017_paper.pdf) (Islam et al., MICCAI 2025) on **CHAOS T1-DUAL in-phase → out-of-phase MRI**. It starts from the [official code](https://github.com/ShazidAraf/ODES) and fills in the parts that are missing there.

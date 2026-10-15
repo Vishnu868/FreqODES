@@ -13,7 +13,7 @@
 \input{figures/v2_numbers.tex}
 
 % ---------------- GROUP DETAILS (edit) ----------------
-\newcommand{\GroupName}{Group \textless{}No.\textgreater{}}
+\newcommand{\GroupName}{Group A12}
 % -------------------------------------------------------
 
 \tikzset{
@@ -33,14 +33,11 @@
 
 \title [mode = title]{FreqODES: Frequency-domain guided online domain adaptation with expert-in-the-loop active learning for abdominal MRI segmentation}
 
-\author[1]{Member 1 Name (Roll No.)}[]
-\cormark[1]
-\ead{member1@example.edu}
-\author[1]{Member 2 Name (Roll No.)}[]
+\author[1]{Vishnu Vardhan (CB.SC.U4AIE23043)}[]
+\author[1]{Nithya Sai (CB.SC.U4AIE23021)}[]
 \affiliation[1]{organization={Amrita School of Artificial Intelligence, Amrita Vishwa Vidyapeetham},
     addressline={22AIE437 Medical Image Processing, \GroupName},
     country={India}}
-\cortext[cor1]{Corresponding author}
 
 \begin{abstract}
 Segmentation networks trained on one MR sequence degrade when deployed on another. ODES (MICCAI 2025) adapts a pre-trained network online, patient by patient, by asking an expert to label 1\% of the pixels of a pruned subset of slices and updating only the batch-normalisation (BN) layers. Its image-pruning step ranks slices by the KL divergence between BN statistics of the source model and of augmented copies of each slice. We reproduce ODES on CHAOS T1-DUAL in-phase$\rightarrow$out-of-phase MRI after completing the public code (training script, missing diversity module, device and selection fixes), obtaining a mean Dice of \DODESK\% with all slices annotated (paper: 78.61\%) and \DBNKTen\% with 10\% of slices (paper: 76.80\%). We then propose FreqODES, which replaces the network-internal score by an interpretable frequency-domain shift score built from FFT radial-band energies and Haar wavelet sub-band energies, optionally fused with the BN score. The frequency score separates source from target slices with ROC-AUC \AUCFFT\ and requires no forward passes, reducing the online adaptation time by about one third, but used alone it does not beat ODES: a good detector of domain shift is not necessarily a good detector of annotation value. Guided by this analysis, the final method, FreqODES-U, multiplies the frequency shift by the model's prediction uncertainty. Over three seeds, with 10\% of slices annotated, it reaches \VFeTenMean\% mean Dice against \VBnTenMean\% for ODES ($\Delta=\VFeTenDiff$, $p=\VFeTenP$, paired Wilcoxon over 60 patient-runs), with a seed-to-seed standard deviation of \VFeTenStd\ instead of \VBnTenStd\ and a one-third shorter adaptation pass; with 50\% of slices ODES remains slightly better (\VBnFiftyMean\% vs.\ \VFeFiftyMean\%).
@@ -275,7 +272,7 @@ We reproduced ODES on CHAOS T1-DUAL IP$\rightarrow$OOP after completing its publ
 Code, configuration, logs and result files: \url{https://github.com/Vishnu868/FreqODES}. CHAOS is available from Zenodo (record 3431873).
 
 \section*{CRediT authorship contribution statement}
-\textbf{Member 1:} \textless contribution\textgreater. \textbf{Member 2:} \textless contribution\textgreater.
+Both authors took part in every stage of the project. \textbf{Vishnu Vardhan:} Software, Data curation, Investigation, Methodology (environment set-up, CHAOS preprocessing, completion of the ODES code, source-model training and replication, implementation of the FFT/DWT score and FreqODES-U, GPU experiments, code repository). \textbf{Nithya Sai:} Conceptualization, Formal analysis, Validation, Visualization, Writing -- original draft (literature survey and proposal, frequency analysis of in-phase vs.\ out-of-phase images, v2 design and ablation plan, three-seed evaluation, statistical analysis, figures, slides and report).
 \section*{Acknowledgement}
 The ODES software used in this work was created by Amit Roy-Chowdhury and members of the Vision and Learning Group at UCR. \copyright\ 2025 UCR.
 
