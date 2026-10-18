@@ -6,6 +6,8 @@
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{booktabs,multirow,graphicx,amsmath,xcolor}
 \usepackage{tikz}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 
 % Remove the template's left footer ("<short authors>: Preprint submitted to Elsevier"); keep "Page x of y"
@@ -15,6 +17,7 @@
 
 \input{figures/numbers.tex}     % single-seed results (make_report.py)
 \input{figures/v2_numbers.tex}  % three-seed results (analyze_v2.py)
+\input{figures/v2_organ_numbers.tex} % three-seed per-organ results (organ_v2.py)
 
 \tikzset{
   blk/.style={draw, rounded corners=2pt, minimum height=7mm, align=center, font=\scriptsize, fill=#1!15},
@@ -58,6 +61,8 @@ Retraining a model for every new site needs expert annotations, which are slow a
 
 \textbf{ODES}~\cite{islam2025odes}, by Islam et al.\ (MICCAI 2025), combines the two ideas in an online setting. The source-trained model receives one patient at a time. For each patient it (i) predicts all slices, (ii) keeps the $K\%$ of slices with the largest domain shift, measured by the Kullback--Leibler divergence between the batch-normalisation (BN) statistics of the source model and those of augmented copies of each slice, (iii) asks an expert to label $b\%$ of the pixels of the kept slices, chosen by entropy, regional impurity and a diversity map, and (iv) updates only the BN parameters before the next patient arrives. ODES clearly outperforms unsupervised TTA methods on CHAOS, CHAOS$\rightarrow$DUKE and BMC$\rightarrow$RUNMC.
 
+The online, patient-by-patient setting matches clinical practice. Scanners process one patient after another, and the interval between two examinations, the turnover time, leaves room for a short annotation and update step without changing the clinical workflow~\cite{islam2025odes}. In this setting every second of expert time and every forward pass count: the expert can label only a few small regions per patient, the model must be ready before the next patient arrives, and a slice that is skipped is never seen again. The choice of which slices to show the expert therefore determines how much the model can learn from each patient.
+
 The present work starts from ODES and examines its first decision: \emph{which slices are worth the expert's time}. The BN-based score is indirect, assumes Gaussian channel activations, needs twenty augmented forward passes per slice, and gives no human-readable reason for a selection. Because sequence and scanner changes alter texture, noise and edge content, they should be visible directly in the spatial-frequency content of an image, a property exploited by recent frequency-domain generalisation and adaptation methods~\cite{zhao2024morestyle,wu2025randdg,yin2025ddfp,pan2025wgsf}. We therefore ask whether a frequency-domain description of each slice can drive slice selection in ODES.
 
 The online setting, the segmentation backbone, the acquisition function, the BN-only update and the evaluation protocol are taken unchanged from ODES and are credited to its authors; our changes are confined to the slice-selection step, so that any difference in results can be attributed to it. Our contributions are:
@@ -79,6 +84,13 @@ Active domain adaptation (ADA) selects target samples or regions for labelling. 
 
 \subsection{Frequency-domain methods for domain shift}
 Frequency representations separate global appearance from structure and have been widely used against domain shift. In domain generalisation, MoreStyle~\cite{zhao2024morestyle} relaxes the low-frequency constraint in Fourier-based augmentation, RandDG~\cite{wu2025randdg} randomises low-frequency amplitude statistics, and wavelet-guided networks fuse spatial and frequency features for unseen domains~\cite{pan2025wgsf,wang2026wavernet}. For adaptation, DDFP~\cite{yin2025ddfp} learns data-dependent frequency prompts for source-free medical segmentation. Frequency features also improve segmentation itself, for brain tumours~\cite{shao2025brainfreq} and abdominal organs~\cite{han2025abdominalfreq}. These works use the frequency domain to \emph{transform} images or features. We use it instead to \emph{measure} domain shift per slice, and to decide where an expert's labels are spent.
+
+%=====================================================================
+\section{Problem formulation}\label{sec:problem}
+%=====================================================================
+Let $\mathcal{S}=\{(x_i^S,y_i^S)\}_{i=1}^{M_S}$ be labelled source slices drawn from a distribution $\mathcal{D}_S$, and let $f_\theta$ be a segmentation network trained on $\mathcal{S}$ that maps a slice $x\in\mathbb{R}^{H\times W}$ to class probabilities $P\in[0,1]^{C\times H\times W}$ over $C$ classes. After deployment, target patients arrive one at a time as batches $X_t=\{x_j^t\}_{j=1}^{B_t}$, $t=1,2,\dots$, drawn from a shifted distribution $\mathcal{D}_T\neq\mathcal{D}_S$, where $B_t$ is the number of slices of patient $t$. Before patient $t+1$ arrives, the system may (i) choose a subset $\mathcal{K}_t\subseteq X_t$ of at most $\lceil K B_t\rceil$ slices, (ii) obtain expert labels on at most $b\,HW$ pixels of each chosen slice, and (iii) update a small set of parameters $\phi\subset\theta$ once. Patient $t$ is segmented with the model available at that moment, and its slices are never revisited. The goal is the highest mean segmentation quality over the stream for fixed budgets $K$ and $b$, without access to $\mathcal{S}$ after deployment.
+
+Three properties of this setting shape the design of the slice-selection score $s(x_j)$ that defines $\mathcal{K}_t$. First, the score must be computed within the turnover time, so its cost should be small compared with inference. Second, it must work without target labels, since labels exist only after selection. Third, a wrong choice cannot be corrected later, so the score should behave consistently across patients and runs. ODES and the methods proposed here differ only in $s(\cdot)$; the acquisition of pixels inside the chosen slices and the update of $\phi$ are shared.
 
 %=====================================================================
 \section{Background: ODES}\label{sec:odes}
@@ -115,6 +127,9 @@ and the $K\%$ of slices with the largest $D_{BN}$ are kept.
 %=====================================================================
 \section{Method: FreqODES}\label{sec:method}
 %=====================================================================
+\subsection{Why in-phase and out-of-phase images differ in frequency}
+T1-DUAL imaging acquires two gradient echoes at echo times at which fat and water protons precess in phase and out of phase. In the IP image the fat and water signals add; in the OOP image they subtract. Voxels that contain both tissues, such as those at organ boundaries surrounded by fat, therefore lose signal in the OOP image and form thin dark contours, the chemical-shift artefact of the second kind. Fatty infiltration of the liver produces a similar, more diffuse signal drop. These changes leave the anatomy unchanged but add sharp, thin intensity transitions and alter local texture, which moves energy from low to high spatial frequencies. A descriptor of how image energy is distributed over spatial frequencies should therefore separate IP from OOP slices without any knowledge of the segmentation network. This physical argument motivates the descriptors below, and Section~\ref{sec:results} confirms it empirically.
+
 \subsection{Frequency-domain shift score}
 For a slice $x$ (zero-mean), the \textbf{FFT descriptor} is the vector of log relative energies of $|\mathcal{F}(x)|^2$ in $N_b=16$ concentric radial bands of the centred spectrum. The \textbf{DWT descriptor} is the vector of log relative energies of the sub-bands of a three-level Haar decomposition (LL$_3$ and LH$_l$, HL$_l$, HH$_l$ for $l=1,2,3$). Relative energies remove global brightness and contrast, and the logarithm balances the small high-frequency bands against the large low-frequency band. A reference mean $\mu_f$ and standard deviation $\sigma_f$ of each component are estimated once from 200 random source slices. The shift of a target slice is the diagonal Mahalanobis distance
 \begin{equation}
@@ -127,19 +142,120 @@ The first evaluation (Section~\ref{sec:v1}) showed that the most frequency-shift
 \begin{equation}
 S(x_j)=\hat D_{freq}(x_j)\cdot\hat H(x_j),
 \end{equation}
-which we call \textbf{FreqODES-U}, performed best. $\hat H$ is computed from the inference prediction that ODES already makes, so the score still needs no additional forward pass. All variants were evaluated with three seeds and are reported in full.
+which we call \textbf{FreqODES-U}, performed best. $\hat H$ is computed from the inference prediction that ODES already makes, so the score still needs no additional forward pass. All variants were evaluated with three seeds and are reported in full. Algorithm~\ref{alg:freqodes} summarises one online step.
+
+The two factors play complementary roles. $\hat D_{freq}$ is a property of the image alone: it is high for slices whose appearance is far from the source domain, whether or not the network handles them well. $\hat H$ is a property of the network on that slice: it is high where the current model is unsure, including regions where it is unsure for reasons unrelated to the domain shift, such as small or ambiguous organs. Their product is high only for slices that are both shifted and uncertain, which are the slices on which an expert label is most likely to correct a shift-induced error. Because both factors are normalised by their batch maximum, the score is a relative ranking within each patient and needs no tuning of thresholds.
+
+\begin{algorithm}[t]
+\caption{One online step of FreqODES-U for patient $t$}
+\label{alg:freqodes}
+\begin{algorithmic}[1]
+\Require model $f_\theta$; source reference $(\mu_f,\sigma_f)$; budgets $K$, $b$
+\State $P_j\gets f_\theta(x_j^t)$ for all slices $j=1,\dots,B_t$ \Comment{inference, also the output}
+\For{$j=1$ to $B_t$}
+  \State $\phi(x_j^t)\gets$ [FFT band energies, Haar DWT sub-band energies]
+  \State $D_j\gets\frac1d\sum_f\big((\phi_f(x_j^t)-\mu_f)/\sigma_f\big)^2$ \Comment{no forward pass}
+  \State $H_j\gets$ mean pixel entropy of $P_j$
+\EndFor
+\State $S_j\gets (D_j/\max_k D_k)\cdot(H_j/\max_k H_k)$
+\State $\mathcal{K}_t\gets$ top-$\lceil K B_t\rceil$ slices by $S_j$
+\For{each slice in $\mathcal{K}_t$}
+  \State select $5\times5$ patches by $U\odot P\odot W$ up to $b$ of the area \Comment{as in ODES}
+  \State obtain expert labels for the selected patches
+\EndFor
+\State update BN parameters $(\gamma,\beta)$ with one Adam step on the labelled pixels
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Computational cost}
+For a patient with $B$ slices, the ODES score passes $N_{aug}=20$ augmented copies of every slice through a copy of the network, that is $N_{aug}B$ additional forward passes; for a typical CHAOS patient with $B\approx32$ this is about 640 forward passes, about twenty times the cost of segmenting the patient. The frequency descriptor needs one 2-D FFT ($O(HW\log HW)$) and one three-level Haar transform ($O(HW)$) per slice, which takes a few milliseconds on a CPU, and the uncertainty term reuses the inference output. Selection with FreqODES-U is therefore essentially free, and the remaining cost of an online step is dominated by inference, patch acquisition and the BN update. The measured end-to-end times are reported in Section~\ref{sec:cost}.
+
+\subsection{Design choices}
+The descriptor uses $N_b=16$ radial bands, which resolve the spectrum of a $256\times256$ slice finely enough to separate low-, mid- and high-frequency energy while keeping each band estimate stable. The Haar wavelet is the simplest orthogonal wavelet; three levels reduce the approximation band to $32\times32$ pixels, the scale of the kidneys and spleen. The reference statistics come from only 200 random source slices, so the score can be prepared once before deployment and the source data are not needed afterwards, as required in the source-free online setting. The diagonal Mahalanobis distance treats each band separately and needs no assumption about the distribution of network activations.
 
 %=====================================================================
 \section{Experimental setup}
 %=====================================================================
 \subsection{Dataset and protocol}
-We use the 20 MR training cases of CHAOS~\cite{kavur2021chaos}, T1-DUAL sequence: 647 axial slices (26--50 per patient) of $256\times256$ or $288\times288$ pixels, resized to $256\times256$ and normalised per slice. Labels are liver, right kidney, left kidney and spleen, plus background. Following ODES~\cite{islam2025odes}, the source model is trained on the IP volumes, and the 20 OOP volumes are streamed once, in a fixed order, as 20 online batches. Each patient is evaluated right after its own adaptation step.
+We use the 20 MR training cases of CHAOS~\cite{kavur2021chaos}, T1-DUAL sequence: 647 axial slices (26--50 per patient) of $256\times256$ or $288\times288$ pixels, resized to $256\times256$ and normalised per slice. Labels are liver, right kidney, left kidney and spleen, plus background. Following ODES~\cite{islam2025odes}, the source model is trained on the IP volumes, and the 20 OOP volumes are streamed once, in a fixed order, as 20 online batches. Each patient is evaluated right after its own adaptation step. Table~\ref{tab:data} summarises the data. The classes are strongly imbalanced: background covers 95.5\% of the pixels and each kidney less than 0.4\%, which explains why the kidneys are the most sensitive organs to domain shift and why we report per-organ results.
+
+\begin{table}[t]
+\caption{CHAOS T1-DUAL data used in this study. Pixel shares are computed over all 647 slices.}
+\label{tab:data}
+\centering\small
+\begin{tabular}{ll}
+\toprule
+Property & Value \\
+\midrule
+Patients & 20 (CHAOS MR training set) \\
+Sequences & T1-DUAL in-phase (source), out-of-phase (target) \\
+Slices per patient & 26--50 (647 in total) \\
+In-plane size & $256\times256$ or $288\times288$ $\rightarrow$ $256\times256$ \\
+Liver pixels & 3.21\% \\
+Right / left kidney pixels & 0.35\% / 0.36\% \\
+Spleen pixels & 0.56\% \\
+Background pixels & 95.52\% \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Completing the ODES implementation}
 Our implementation is built on the official ODES code released by its authors (\url{https://github.com/ShazidAraf/ODES}), which provides the online loop but not a runnable pipeline. We added a CHAOS conversion script (checking slice--label alignment), a source-training script, and the module \texttt{FFT\_weight\_2.py}, which the code imports but which was not released; we re-implemented it from Algorithm~2 of~\cite{islam2025odes}. We also removed hard-coded GPU calls, enabled the diversity map (its multiplication was commented out) and fixed a stale variable through which a previous slice's acquisition map could be used.
 
 \subsection{Implementation details}
-The segmentation network is DeepLabv3 with an ImageNet-initialised ResNet-18 encoder and an ASPP module (16.6\,M parameters), as in ODES. It is trained on IP slices for 25 epochs with Adam (learning rate $10^{-3}$, weight decay $10^{-4}$, cosine schedule), batch size 8, cross-entropy plus Dice loss, and flips, $90^\circ$ rotations and intensity jitter. Online adaptation uses Adam with learning rate $10^{-2}$ and one step per patient, updating only the 13{,}792 BN affine parameters. The pixel budget is $b=1\%$ (26 patches of $5\times5$ pixels per selected slice) and the slice budget is $K\in\{10,50,100\}\%$. The BN-KL score uses 20 augmented copies per slice, as in the released code. All experiments ran in PyTorch on an NVIDIA Tesla T4 GPU.
+The segmentation network is DeepLabv3 with an ImageNet-initialised ResNet-18 encoder and an ASPP module (16.6\,M parameters), as in ODES. It is trained on IP slices for 25 epochs with Adam (learning rate $10^{-3}$, weight decay $10^{-4}$, cosine schedule), batch size 8, cross-entropy plus Dice loss, and flips, $90^\circ$ rotations and intensity jitter. Online adaptation uses Adam with learning rate $10^{-2}$ and one step per patient, updating only the 13{,}792 BN affine parameters. The pixel budget is $b=1\%$ (26 patches of $5\times5$ pixels per selected slice) and the slice budget is $K\in\{10,50,100\}\%$. The BN-KL score uses 20 augmented copies per slice, as in the released code. All experiments ran in PyTorch on an NVIDIA Tesla T4 GPU. Tables~\ref{tab:hyper} and~\ref{tab:arch} list all settings and the network dimensions; every method uses the same values, so they differ only in the slice-selection score.
+
+\begin{table}[t]
+\caption{Hyper-parameters, shared by all methods.}
+\label{tab:hyper}
+\centering\small
+\begin{tabular}{ll}
+\toprule
+Setting & Value \\
+\midrule
+\multicolumn{2}{l}{\emph{Source training}} \\
+Encoder initialisation & ImageNet ResNet-18 \\
+Optimiser, learning rate & Adam, $10^{-3}$, cosine schedule \\
+Weight decay, batch size, epochs & $10^{-4}$, 8, 25 \\
+Loss & cross-entropy + Dice \\
+Augmentation & flips, $90^\circ$ rotations, intensity jitter \\
+\multicolumn{2}{l}{\emph{Online adaptation}} \\
+Updated parameters & BN $\gamma,\beta$ (13{,}792, 0.08\%) \\
+Optimiser, learning rate, steps & Adam, $10^{-2}$, 1 per patient \\
+Pixel budget $b$ & 1\% of each selected slice \\
+Patch size & $5\times5$ (26 patches per slice) \\
+Slice budget $K$ & 10\%, 50\%, 100\% \\
+Augmented copies (BN-KL) & 20 \\
+Diversity map & threshold 0.5, $\alpha=5$ \\
+\multicolumn{2}{l}{\emph{Frequency score}} \\
+FFT bands & 16 radial bands \\
+Wavelet & Haar, 3 levels (10 sub-bands) \\
+Reference set & 200 random source slices \\
+Seeds & 12345 (single-seed study); 1, 2, 12345 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\caption{Segmentation network (DeepLabv3, ResNet-18 encoder) for a $3\times256\times256$ input.}
+\label{tab:arch}
+\centering\small
+\begin{tabular}{lrr}
+\toprule
+Block & Output size & Parameters \\
+\midrule
+Stem (conv $7\times7$, max-pool) & $64\times64\times64$ & 9.5\,k \\
+ResNet layer 1 (low-level feature) & $64\times64\times64$ & 148\,k \\
+ResNet layers 2--3 & $256\times16\times16$ & 2.63\,M \\
+ResNet layer 4 (high-level feature) & $512\times8\times8$ & 8.39\,M \\
+ASPP (rates 6, 12, 18 + pooling) & $256\times8\times8$ & 4.13\,M \\
+Decoder (skip $48$ ch., two $3\times3$ convs) & $256\times64\times64$ & 1.29\,M \\
+Classifier + $4\times$ upsampling & $5\times256\times256$ & 1.3\,k \\
+\midrule
+Total & & 16.60\,M \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Evaluation}
 We report Dice and Jaccard (IoU) per organ and averaged, and the wall-clock time of a full online pass over the 20 patients. Methods are compared with a paired Wilcoxon signed-rank test on per-patient mean Dice. The first study uses one seed; the FreqODES-U study uses three seeds (1, 2, 12345), giving 60 paired patient-runs per method.
@@ -253,6 +369,40 @@ Random & \VRdTenMean$\pm$\VRdTenStd & \VRdTenDiff\ / \VRdTenP & \VRdTenIoU & \VR
 \label{fig:v2}
 \end{figure*}
 
+\subsection{Per-organ and per-patient analysis}
+Table~\ref{tab:organ} breaks the three-seed results down by organ. At $K=10\%$ the gain of FreqODES-U comes from the small organs: the left kidney improves from \VBnTenLK\% to \VFeTenLK\%, the right kidney from \VBnTenRK\% to \VFeTenRK\% and the spleen from \VBnTenSpleen\% to \VFeTenSpleen\%, while the liver, which is large and already well segmented, is unchanged (\VBnTenLiver\% vs.\ \VFeTenLiver\%). This matches the design of the score: the entropy factor is highest around small, uncertain structures, so the selected slices tend to contain kidneys and spleen, and the expert's patches correct exactly the organs that suffer most from the shift. The frequency score alone (v1) improves the left kidney (\VFqTenLK\%) and the spleen (\VFqTenSpleen\%) over ODES but not the right kidney (\VFqTenRK\%); adding the uncertainty factor lifts both kidneys.
+
+At the patient level, FreqODES-U is better than ODES on \VFeTenWins\ of the 60 patient-runs at $K=10\%$, against \VFqTenWins\ of 60 for the frequency score alone. At $K=50\%$ it is better on \VFeFiftyWins\ of 60, consistent with the small overall advantage of ODES at that budget. The improvement at $K=10\%$ is therefore not caused by a few patients with large gains but is spread over most of the stream.
+
+\begin{table*}[t]
+\caption{Per-organ results over three seeds (mean Dice / mean IoU, \%).}
+\label{tab:organ}
+\centering\small
+\begin{tabular}{llcccc}
+\toprule
+$K$ & Selection score & Liver & Left kidney & Right kidney & Spleen \\
+\midrule
+\multirow{3}{*}{10\%} & ODES (BN-KL) & \VBnTenLiver\ / \VBnTenLiverJ & \VBnTenLK\ / \VBnTenLKJ & \VBnTenRK\ / \VBnTenRKJ & \VBnTenSpleen\ / \VBnTenSpleenJ \\
+ & v1: frequency & \VFqTenLiver\ / \VFqTenLiverJ & \VFqTenLK\ / \VFqTenLKJ & \VFqTenRK\ / \VFqTenRKJ & \VFqTenSpleen\ / \VFqTenSpleenJ \\
+ & \textbf{FreqODES-U} & \VFeTenLiver\ / \VFeTenLiverJ & \textbf{\VFeTenLK}\ / \VFeTenLKJ & \textbf{\VFeTenRK}\ / \VFeTenRKJ & \textbf{\VFeTenSpleen}\ / \VFeTenSpleenJ \\
+\midrule
+\multirow{3}{*}{50\%} & ODES (BN-KL) & \VBnFiftyLiver\ / \VBnFiftyLiverJ & \VBnFiftyLK\ / \VBnFiftyLKJ & \VBnFiftyRK\ / \VBnFiftyRKJ & \VBnFiftySpleen\ / \VBnFiftySpleenJ \\
+ & v1: frequency & \VFqFiftyLiver\ / \VFqFiftyLiverJ & \VFqFiftyLK\ / \VFqFiftyLKJ & \VFqFiftyRK\ / \VFqFiftyRKJ & \VFqFiftySpleen\ / \VFqFiftySpleenJ \\
+ & FreqODES-U & \VFeFiftyLiver\ / \VFeFiftyLiverJ & \VFeFiftyLK\ / \VFeFiftyLKJ & \VFeFiftyRK\ / \VFeFiftyRKJ & \VFeFiftySpleen\ / \VFeFiftySpleenJ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Computational cost}\label{sec:cost}
+Fig.~\ref{fig:runtime} shows the wall-clock time of a full online pass over the 20 patients at $K=10\%$ in the single-seed study. Every frequency-based selection runs in \TFFTKTen--\TFREQKTen\,s, close to random selection (\TRANDOMKTen\,s), whereas the BN-KL score of ODES needs \TBNKTen\,s because of its augmented forward passes. Over the three-seed study the averages are \VFeTenTime\,s for FreqODES-U and \VBnTenTime\,s for ODES. The fused scores inherit the cost of the BN term. Because the frequency descriptors can be computed on a CPU while the GPU segments the previous slice, the selection step adds practically no latency to the clinical workflow.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/runtime.png}
+\caption{Wall-clock time of a full online pass over the 20 target patients ($K=10\%$, NVIDIA T4).}
+\label{fig:runtime}
+\end{figure}
+
 \subsection{Ablation studies}
 Table~\ref{tab:abl} reports the pruning $\times$ diversity-weighting ablation of Table~3 in~\cite{islam2025odes} and the fusion-weight sweep, both from the single-seed study. Diversity weighting changes the mean Dice by at most 0.2 points in our runs, much less than the gains reported by ODES. In the fusion sweep the pure frequency score is lowest, and any amount of BN information brings the result back to the level of ODES.
 
@@ -289,6 +439,14 @@ $\lambda$ & Mean DSC \\
 \paragraph{Why the shift score alone is not enough.} The frequency score answers ``how different is this slice from the source?'', whereas slice selection should answer ``which labels will most improve the model?''. The slices with the most unusual spectra are often at the ends of the volume, where organs are small or absent, so labelling them teaches the BN layers little. The BN score of ODES measures what the \emph{network} finds unusual, which is closer to its errors. In addition, the IP$\rightarrow$OOP change affects every slice, so nearly all target slices look shifted and the useful information lies in the ranking among them. This also explains why random selection is competitive, in contrast to the ablation in~\cite{islam2025odes}.
 
 \paragraph{Why FreqODES-U works.} Weighting the shift by the model's uncertainty keeps the cheap, interpretable image-level signal but favours slices on which the network is actually unsure. This agrees with active domain adaptation work that combines domain cues with uncertainty~\cite{xie2022ripu,safaei2025certainty,huynh2026category}, and with continual TTA methods that use uncertainty to stabilise adaptation~\cite{zhu2025uncertainty}. The organ-area term did not help, which suggests that uncertainty already captures what makes a slice informative. At the 50\% budget half of each volume is labelled anyway, so the selection matters less, which is consistent with ODES keeping a small lead there. The lower seed-to-seed variance of FreqODES-U is useful in practice, because an online system cannot re-run a patient.
+
+\paragraph{Interpretability.} A selection made by FreqODES-U can be explained with two quantities that a clinician or engineer can inspect: the radial spectrum or wavelet energies of the slice compared with the source reference (Fig.~\ref{fig:freq}), and the entropy map of the current prediction. The BN-KL score of ODES is a sum of divergences over hundreds of channels in the last nine BN layers, which has no direct visual meaning. In a clinical deployment, an explainable reason for asking an expert to annotate a particular slice makes the request easier to trust and to audit.
+
+\paragraph{Implications for deployment.} Three practical properties follow from the results. First, the selection step costs almost nothing, so it fits within the turnover time even on modest hardware. Second, the seed-to-seed standard deviation of FreqODES-U at $K=10\%$ is about eight times smaller than that of ODES, so the quality delivered to each patient depends less on chance; an online system cannot re-run a patient, so this stability matters as much as the mean. Third, the benefit is largest at the smallest budget, where expert time is scarcest. When a larger budget is available, the advantage disappears and the original BN-based score is slightly better, so the choice of score can follow the available annotation time.
+
+\paragraph{Relation to recent methods.} Recent continual TTA methods improve unsupervised adaptation through prompts~\cite{chen2024vptta,li2025mgipt,du2026spegc}, anchors~\cite{wu2026a3tta}, energy-based shape priors~\cite{zhang2025energy} or foundation models~\cite{ji2026redifm,wu2025samtta}, and recent active adaptation methods refine region selection~\cite{gao2024superpixel,huynh2026category,yan2026tcada}. These directions are complementary to ours: FreqODES-U changes only which slices are shown to the expert, and could be combined with a stronger adaptation step or a finer pixel-acquisition rule. Frequency-domain techniques have so far mostly been used to augment or translate images~\cite{zhao2024morestyle,wu2025randdg,yin2025ddfp}; our results show that the same representation is also useful as a cheap measure of how far each incoming slice lies from the training domain.
+
+\paragraph{Threats to validity.} The reproduction differs from the published ODES numbers by up to two Dice points because the source model had to be retrained; all methods share our source model, so the comparison between selection scores is unaffected. The online stream follows one fixed patient order, and the order may influence online methods. Experts are simulated with ground-truth labels, so annotation noise and annotation time are not modelled. Finally, the IP$\rightarrow$OOP shift is global and comparatively mild; the conclusions may change for shifts that vary strongly between slices or patients.
 
 \paragraph{Limitations.} FreqODES-U was the best variant of a pre-planned ablation rather than the planned score itself, so its advantage should be confirmed on further data; we report every variant to make this transparent. The evaluation uses one adaptation pair, 20 patients and three seeds, and the expert is simulated with ground-truth labels. Future work includes the CHAOS$\rightarrow$DUKE and BMC$\rightarrow$RUNMC scenarios of~\cite{islam2025odes}, more seeds and stream orders, spectra computed inside organ regions of interest, and combining the score with recent prompt-based and foundation-model TTA methods~\cite{li2025mgipt,ji2026redifm,du2026spegc}.
 
