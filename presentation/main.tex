@@ -236,8 +236,8 @@ make_report.py     tables, plots, LaTeX numbers
       \node[box=green]  (rest) at (0,-5.4)  {Acquisition + BN update (unchanged)};
       \draw[arr] (x.south) -- ++(0,-0.3) -| (bn.north);
       \draw[arr] (x.south) -- ++(0,-0.3) -| (fq.north);
-      \draw[arr] (bn.south) |- (fuse.west);
-      \draw[arr] (fq.south) |- (fuse.east);
+      \draw[arr] (bn.south) -- (bn.south |- fuse.north);
+      \draw[arr] (fq.south) -- (fq.south |- fuse.north);
       \draw[arr] (fuse) -- (sel);
       \draw[arr] (sel) -- (rest);
       \node[new, fit=(fq), inner sep=2pt, label={[font=\tiny,red!70!black]above right:new}] {};
@@ -352,13 +352,13 @@ make_report.py     tables, plots, LaTeX numbers
       \node[box=blue, text width=40mm] (x) at (0, 0) {Slice $x_j$ + inference prediction};
       \node[box=red]    (fq)   at (-1.6,-1.5) {FFT bands + Haar DWT\\shift $\hat D_{freq}$};
       \node[box=red]    (h)    at ( 1.6,-1.5) {Prediction\\entropy $\hat H$};
-      \node[box=yellow] (m)    at (0,-3.0)    {$S=\hat D_{freq}\times\hat H$};
+      \node[box=yellow, text width=40mm] (m) at (0,-3.0) {$S=\hat D_{freq}\times\hat H$};
       \node[box=green]  (sel)  at (0,-4.2)    {top-$K\%$ slices};
       \node[box=green]  (rest) at (0,-5.4)    {Acquisition + BN update (unchanged)};
       \draw[arr] (x.south) -- ++(0,-0.3) -| (fq.north);
       \draw[arr] (x.south) -- ++(0,-0.3) -| (h.north);
-      \draw[arr] (fq.south) |- (m.west);
-      \draw[arr] (h.south) |- (m.east);
+      \draw[arr] (fq.south) -- (fq.south |- m.north);
+      \draw[arr] (h.south) -- (h.south |- m.north);
       \draw[arr] (m) -- (sel);
       \draw[arr] (sel) -- (rest);
       \begin{scope}[on background layer]
