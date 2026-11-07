@@ -364,6 +364,10 @@ make_report.py     tables, plots, LaTeX numbers
       \begin{scope}[on background layer]
         \node[new, fit=(fq)(h)(m), inner sep=3pt, label={[font=\tiny,red!70!black]above right:new}] {};
       \end{scope}
+      % what FreqODES-U replaces: ODES's BN-KL score, shown greyed out
+      \node[blk=gray, text width=17mm, minimum height=9mm, draw=gray, text=gray, dashed, font=\tiny] (bnold) at (2.55,-4.8) {BN-KL score\\of ODES\\(20 passes/slice)};
+      \draw[gray, thick] (bnold.south west) -- (bnold.north east);
+      \node[font=\tiny, text=gray, below=1mm of bnold] {replaced by $S$};
     \end{tikzpicture}
   \end{columns}
 \end{frame}
