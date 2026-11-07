@@ -30,7 +30,8 @@
   blk/.style={draw, rounded corners=2pt, minimum height=7mm, align=center, font=\scriptsize, fill=#1!15},
   blk/.default=gray,
   arr/.style={-{Stealth[length=2mm]}, thick},
-  new/.style={draw=red!70!black, very thick, dashed, rounded corners=3pt}
+  new/.style={draw=red!70!black, very thick, dashed, rounded corners=3pt},
+  box/.style={blk=#1, text width=25mm, minimum height=9mm}
 }
 
 \begin{document}
@@ -226,19 +227,21 @@ make_report.py     tables, plots, LaTeX numbers
     Only Stage 3 changes; backbone, acquisition, update and budgets are identical $\Rightarrow$ fair comparison.
     \column{0.46\textwidth}
     \centering
-    \begin{tikzpicture}[node distance=3mm]
-      \node[blk=blue] (x) {Slice $x$ of patient $t$};
-      \node[blk=orange, below left=5mm and -4mm of x] (bn) {BN-KL\\(20 forward passes)};
-      \node[blk=red, below right=5mm and -4mm of x] (fq) {\textbf{FFT bands}\\\textbf{+ Haar DWT}\\(0 forward passes)};
-      \node[blk=yellow, below=14mm of x] (fuse) {$\lambda\hat D_{BN}+(1-\lambda)\hat D_{freq}$};
-      \node[blk=green, below=3mm of fuse] (sel) {top-$K\%$ (farthest-first)};
-      \node[blk=green, below=3mm of sel] (rest) {Acquisition + BN update\\(unchanged)};
-      \draw[arr] (x) -- (bn); \draw[arr] (x) -- (fq);
-      \draw[arr] (bn) -- (fuse); \draw[arr] (fq) -- (fuse);
-      \draw[arr] (fuse) -- (sel); \draw[arr] (sel) -- (rest);
-      \begin{scope}[on background layer]
-        \node[new, fit=(fq)(fuse), inner sep=2pt, label={[font=\tiny,red!70!black]right:new}] {};
-      \end{scope}
+    \begin{tikzpicture}
+      \node[box=blue]   (x)    at (0, 0)     {Slice $x$ of patient $t$};
+      \node[box=orange] (bn)   at (-1.6,-1.5) {BN-KL\\(20 forward passes)};
+      \node[box=red]    (fq)   at ( 1.6,-1.5) {\textbf{FFT bands + Haar DWT}\\(0 forward passes)};
+      \node[box=yellow, text width=34mm] (fuse) at (0,-3.0) {$\lambda\hat D_{BN}+(1-\lambda)\hat D_{freq}$};
+      \node[box=green]  (sel)  at (0,-4.2)  {top-$K\%$ (farthest-first)};
+      \node[box=green]  (rest) at (0,-5.4)  {Acquisition + BN update (unchanged)};
+      \draw[arr] (x.south) -- ++(0,-0.3) -| (bn.north);
+      \draw[arr] (x.south) -- ++(0,-0.3) -| (fq.north);
+      \draw[arr] (bn.south) |- (fuse.west);
+      \draw[arr] (fq.south) |- (fuse.east);
+      \draw[arr] (fuse) -- (sel);
+      \draw[arr] (sel) -- (rest);
+      \node[new, fit=(fq), inner sep=2pt, label={[font=\tiny,red!70!black]above right:new}] {};
+      \node[new, fit=(fuse), inner sep=2pt] {};
     \end{tikzpicture}
   \end{columns}
 \end{frame}
@@ -345,18 +348,21 @@ make_report.py     tables, plots, LaTeX numbers
     \end{itemize}
     \column{0.46\textwidth}
     \centering
-    \begin{tikzpicture}[node distance=3mm]
-      \node[blk=blue] (x) {Slice $x_j$ + inference prediction};
-      \node[blk=red, below left=5mm and -6mm of x] (fq) {FFT bands\\+ Haar DWT\\shift $\hat D_{freq}$};
-      \node[blk=red, below right=5mm and -6mm of x] (h) {Prediction\\entropy $\hat H$};
-      \node[blk=yellow, below=20mm of x] (m) {$S=\hat D_{freq}\times\hat H$};
-      \node[blk=green, below=3mm of m] (sel) {top-$K\%$ slices};
-      \node[blk=green, below=3mm of sel] (rest) {Acquisition + BN update\\(unchanged)};
-      \draw[arr] (x) -- (fq); \draw[arr] (x) -- (h);
-      \draw[arr] (fq) -- (m); \draw[arr] (h) -- (m);
-      \draw[arr] (m) -- (sel); \draw[arr] (sel) -- (rest);
+    \begin{tikzpicture}
+      \node[box=blue, text width=40mm] (x) at (0, 0) {Slice $x_j$ + inference prediction};
+      \node[box=red]    (fq)   at (-1.6,-1.5) {FFT bands + Haar DWT\\shift $\hat D_{freq}$};
+      \node[box=red]    (h)    at ( 1.6,-1.5) {Prediction\\entropy $\hat H$};
+      \node[box=yellow] (m)    at (0,-3.0)    {$S=\hat D_{freq}\times\hat H$};
+      \node[box=green]  (sel)  at (0,-4.2)    {top-$K\%$ slices};
+      \node[box=green]  (rest) at (0,-5.4)    {Acquisition + BN update (unchanged)};
+      \draw[arr] (x.south) -- ++(0,-0.3) -| (fq.north);
+      \draw[arr] (x.south) -- ++(0,-0.3) -| (h.north);
+      \draw[arr] (fq.south) |- (m.west);
+      \draw[arr] (h.south) |- (m.east);
+      \draw[arr] (m) -- (sel);
+      \draw[arr] (sel) -- (rest);
       \begin{scope}[on background layer]
-        \node[new, fit=(fq)(h)(m), inner sep=2pt] {};
+        \node[new, fit=(fq)(h)(m), inner sep=3pt, label={[font=\tiny,red!70!black]above right:new}] {};
       \end{scope}
     \end{tikzpicture}
   \end{columns}
